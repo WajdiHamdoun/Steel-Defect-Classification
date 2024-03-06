@@ -33,7 +33,7 @@ for img_name in os.listdir(Datadir):
     flipped_img_vertical = cv2.flip(thresh_img, 0)
     
     # Append original and augmented images to the list
-    augmented_data.extend([img])
+    augmented_data.extend([img, flipped_img_horizontal, flipped_img_vertical])
 
 # Convert the list to a numpy array
 augmented_data = np.array(augmented_data)
