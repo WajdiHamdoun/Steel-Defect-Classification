@@ -51,6 +51,31 @@ print("Number of images in augmented dataset:", num_images)
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import os
 import cv2
 import numpy as np
@@ -62,7 +87,7 @@ original_images = []
 thresholded_images = []
 
 # Name of the image to display
-image_name = "SteelDefect (1021)"
+image_name = "SteelDefect (978)"
 
 # Loop through each image in the dataset directory
 for img_name in os.listdir(Datadir):
@@ -77,15 +102,15 @@ for img_name in os.listdir(Datadir):
         
         # Resize the image to the target size
         img = cv2.resize(img, target_size)
-        alpha = 1.3  # Contrast control (1.0-3.0)
+        alpha = 1.0  # Contrast control (1.0-3.0)
         beta = 0  # Brightness control (0-100)
         enhanced_img = cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
         
         # Convert the image to grayscale
         gray_img = cv2.cvtColor(enhanced_img, cv2.COLOR_BGR2GRAY)
         
-        # Apply thresholding
-        _, thresh_img = cv2.threshold(gray_img, 240, 255, cv2.THRESH_BINARY)
+        # Apply adaptive thresholding
+        thresh_img = cv2.adaptiveThreshold(gray_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 101, 2)
         
         # Append original and thresholded images to their respective lists
         original_images.append(img)
@@ -101,7 +126,7 @@ fig, axes = plt.subplots(1, 2, figsize=(12, 6))
 # Show original image
 axes[0].imshow(original_images[0], cmap='gray')
 axes[0].axis('off')
-axes[0].set_title('Original Image')
+axes[0].set_title(image_name)
 
 # Show thresholded image
 axes[1].imshow(thresholded_images[0], cmap='gray')
@@ -109,4 +134,5 @@ axes[1].axis('off')
 axes[1].set_title('Thresholded Image')
 
 plt.show()
+
 
