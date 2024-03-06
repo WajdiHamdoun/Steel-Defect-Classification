@@ -20,43 +20,34 @@ for img_name in os.listdir(Datadir):
     # Resize the image to the target size
     img = cv2.resize(img, target_size)
     
-    # Convert the image to grayscale
-    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # Increase contrast of the image
+    alpha = 1.3  # Contrast control (1.0-3.0)
+    beta = 0  # Brightness control (0-100)
+    enhanced_img = cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
     
-    # Apply thresholding
-    _, thresh_img = cv2.threshold(gray_img, 127, 255, cv2.THRESH_BINARY)
+    # Flip the image horizontally
+    flipped_img_horizontal = cv2.flip(enhanced_img, 1)
     
-    # Flip the thresholded image horizontally
-    flipped_img_horizontal = cv2.flip(thresh_img, 1)
-    
-    # Flip the thresholded image vertically
-    flipped_img_vertical = cv2.flip(thresh_img, 0)
+    # Flip the image vertically
+    flipped_img_vertical = cv2.flip(enhanced_img, 0)
     
     # Append original and augmented images to the list
-    augmented_data.extend([img, flipped_img_horizontal, flipped_img_vertical])
+    augmented_data.extend([enhanced_img, flipped_img_horizontal, flipped_img_vertical])
 
 # Convert the list to a numpy array
 augmented_data = np.array(augmented_data)
 
 # Display some of the augmented images
-fig, axes = plt.subplots(1, 2, figsize=(12, 6))
-
-# Show image number 97
-axes[0].imshow(augmented_data[1], cmap='gray')
-axes[0].axis('off')
-axes[0].set_title('Augmented Image 97')
-
-# Show image number 98
-axes[1].imshow(augmented_data[2], cmap='gray')
-axes[1].axis('off')
-axes[1].set_title('Augmented Image 98')
-
+fig, axes = plt.subplots(2, 3, figsize=(12, 8))
+for i, ax in enumerate(axes.flatten()):
+    ax.imshow(cv2.cvtColor(augmented_data[i], cv2.COLOR_BGR2RGB))
+    ax.axis('off')
+    ax.set_title(f'Augmented Image {i+1}')
 plt.show()
-
-
 
 num_images = len(augmented_data)
 print("Number of images in augmented dataset:", num_images)
+
 
 
 
@@ -71,7 +62,7 @@ original_images = []
 thresholded_images = []
 
 # Name of the image to display
-image_name = "SteelDefect (294)"
+image_name = "SteelDefect (1021)"
 
 # Loop through each image in the dataset directory
 for img_name in os.listdir(Datadir):
@@ -86,12 +77,15 @@ for img_name in os.listdir(Datadir):
         
         # Resize the image to the target size
         img = cv2.resize(img, target_size)
+        alpha = 1.3  # Contrast control (1.0-3.0)
+        beta = 0  # Brightness control (0-100)
+        enhanced_img = cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
         
         # Convert the image to grayscale
-        gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray_img = cv2.cvtColor(enhanced_img, cv2.COLOR_BGR2GRAY)
         
         # Apply thresholding
-        _, thresh_img = cv2.threshold(gray_img, 80, 255, cv2.THRESH_BINARY)
+        _, thresh_img = cv2.threshold(gray_img, 240, 255, cv2.THRESH_BINARY)
         
         # Append original and thresholded images to their respective lists
         original_images.append(img)
