@@ -21,24 +21,30 @@ for img_name in os.listdir(Datadir):
     img = cv2.resize(img, target_size)
     
     # Increase contrast of the image
-    alpha = 1.3  # Contrast control (1.0-3.0)
+    alpha = 1.0  # Contrast control (1.0-3.0)
     beta = 0  # Brightness control (0-100)
     enhanced_img = cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
-    
+        
+    # Convert the image to grayscale
+    gray_img = cv2.cvtColor(enhanced_img, cv2.COLOR_BGR2GRAY)
+        
+    # Apply adaptive thresholding
+    thresh_img = cv2.adaptiveThreshold(gray_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 101, 5)
+        
     # Flip the image horizontally
     flipped_img_horizontal = cv2.flip(enhanced_img, 1)
     
     # Flip the image vertically
     flipped_img_vertical = cv2.flip(enhanced_img, 0)
     
-    # Append original and augmented images to the list
-    augmented_data.extend([enhanced_img, flipped_img_horizontal, flipped_img_vertical])
+    # Append original image, flipped images, and thresholded image to the list
+    augmented_data.extend([gray_img, thresh_img])
 
 # Convert the list to a numpy array
 augmented_data = np.array(augmented_data)
 
 # Display some of the augmented images
-fig, axes = plt.subplots(2, 3, figsize=(12, 8))
+fig, axes = plt.subplots(5, 4, figsize=(12, 8))
 for i, ax in enumerate(axes.flatten()):
     ax.imshow(cv2.cvtColor(augmented_data[i], cv2.COLOR_BGR2RGB))
     ax.axis('off')
@@ -47,6 +53,8 @@ plt.show()
 
 num_images = len(augmented_data)
 print("Number of images in augmented dataset:", num_images)
+
+
 
 
 
@@ -87,7 +95,7 @@ original_images = []
 thresholded_images = []
 
 # Name of the image to display
-image_name = "SteelDefect (978)"
+image_name = "SteelDefect (1673)"
 
 # Loop through each image in the dataset directory
 for img_name in os.listdir(Datadir):
@@ -110,7 +118,7 @@ for img_name in os.listdir(Datadir):
         gray_img = cv2.cvtColor(enhanced_img, cv2.COLOR_BGR2GRAY)
         
         # Apply adaptive thresholding
-        thresh_img = cv2.adaptiveThreshold(gray_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 101, 2)
+        thresh_img = cv2.adaptiveThreshold(gray_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 101, 5)
         
         # Append original and thresholded images to their respective lists
         original_images.append(img)
