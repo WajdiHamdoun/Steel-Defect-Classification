@@ -1,3 +1,5 @@
+# main
+
 import os
 import cv2
 import numpy as np
@@ -11,13 +13,13 @@ augmented_data = []
 for img_name in os.listdir(Datadir):
     img_path = os.path.join(Datadir, img_name)
     
-    # Read the image with error handling
+    # Read the image with error handling (Thumbs.db inexistant pour le mm)
     img = cv2.imread(img_path)
     if img is None:
         print(f"Error reading image: {img_path}")
         continue
     
-    # Resize the image to the target size
+    # Resize the image to the target size (to be adaptive for any input)
     img = cv2.resize(img, target_size)
     
     # Increase contrast of the image
@@ -25,17 +27,17 @@ for img_name in os.listdir(Datadir):
     beta = 0  # Brightness control (0-100)
     enhanced_img = cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
         
-    # Convert the image to grayscale
+    # Convert the image to grayscale (to be adaptive for any input)
     gray_img = cv2.cvtColor(enhanced_img, cv2.COLOR_BGR2GRAY)
         
     # Apply adaptive thresholding
     thresh_img = cv2.adaptiveThreshold(gray_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 101, 5)
         
     # Flip the image horizontally
-    flipped_img_horizontal = cv2.flip(enhanced_img, 1)
+    # flipped_img_horizontal = cv2.flip(enhanced_img, 1)
     
     # Flip the image vertically
-    flipped_img_vertical = cv2.flip(enhanced_img, 0)
+    # flipped_img_vertical = cv2.flip(enhanced_img, 0)
     
     # Append original image, flipped images, and thresholded image to the list
     augmented_data.extend([gray_img, thresh_img])
@@ -48,7 +50,10 @@ fig, axes = plt.subplots(5, 4, figsize=(12, 8))
 for i, ax in enumerate(axes.flatten()):
     ax.imshow(cv2.cvtColor(augmented_data[i], cv2.COLOR_BGR2RGB))
     ax.axis('off')
-    ax.set_title(f'Augmented Image {i+1}')
+    if i % 2 == 0 :
+        ax.set_title(f'Original Image {i+1}')
+    else :
+        ax.set_title(f'Thresholded Image {i+1}')
 plt.show()
 
 num_images = len(augmented_data)
@@ -82,7 +87,7 @@ print("Number of images in augmented dataset:", num_images)
 
 
 
-
+#Test img per img
 
 import os
 import cv2
