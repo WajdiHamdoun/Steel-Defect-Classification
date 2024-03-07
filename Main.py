@@ -51,9 +51,9 @@ for i, ax in enumerate(axes.flatten()):
     ax.imshow(cv2.cvtColor(augmented_data[i], cv2.COLOR_BGR2RGB))
     ax.axis('off')
     if i % 2 == 0 :
-        ax.set_title(f'Original Image {i+1}')
+        ax.set_title(f'Original Image {((i+1)//2)+1}')
     else :
-        ax.set_title(f'Thresholded Image {i+1}')
+        ax.set_title(f'Thresholded Image {((i+1)//2)}')
 plt.show()
 
 num_images = len(augmented_data)
