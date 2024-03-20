@@ -1,15 +1,21 @@
 import os
 import cv2
 import numpy as np
-from matplotlib import pyplot as plt
-from tensorflow.keras import layers, models
 from sklearn.model_selection import train_test_split
-
+from tensorflow.keras import layers, models
 
 # Chargement des données
-Datadir = "C:/Users/gabsi/OneDrive/Documents/GitHub/Souuce"
+Datadir = "E:\\pcd\\NEU database\\NEU database"
+
 target_size = (200, 200) 
-labels = ...  # Remplacez ... par vos étiquettes d'entraînement correspondantes
+
+# Mapping categories to numerical labels
+category_to_label = {'Cr': 0, 'In': 1, 'Pa': 2, 'PS': 3, 'RS': 4, 'Sc': 5}
+
+# Placeholder for labels
+labels = []
+
+# Placeholder for augmented data
 augmented_data = []
 
 # Boucle à travers chaque image dans le répertoire du dataset
@@ -21,6 +27,7 @@ for img_name in os.listdir(Datadir):
     if img is None:
         print(f"Error reading image: {img_path}")
         continue
+    
     
     # Redimensionnement de l'image à la taille cible
     img = cv2.resize(img, target_size)
@@ -36,11 +43,21 @@ for img_name in os.listdir(Datadir):
     # Application de la binarisation adaptative
     thresh_img = cv2.adaptiveThreshold(gray_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 101, 5)
         
-    # Ajout de l'image originale et de l'image binarisée à la liste
+    # Extraire la catégorie à partir du nom de l'image
+    category = img_name.split()[0]  # Supposant que la catégorie est la première partie du nom de l'image
+    
+    # Assigner une étiquette numérique à la catégorie
+    label = category_to_label[category]
+    
+    # Ajouter l'étiquette à la liste des étiquettes
+    labels.append(label)
+    
+    # Ajouter les données augmentées à la liste
     augmented_data.extend([gray_img, thresh_img])
 
-# Conversion de la liste en un tableau numpy
+# Conversion des listes en tableaux numpy
 augmented_data = np.array(augmented_data)
+labels = np.array(labels)
 
 # Division des données en ensembles d'entraînement (70%), de validation (15%) et de test (15%)
 X_train, X_temp, y_train, y_temp = train_test_split(augmented_data, labels, test_size=0.3, random_state=42)
@@ -55,12 +72,12 @@ model = models.Sequential([
     layers.Conv2D(64, (3, 3), activation='relu'),
     layers.Flatten(),
     layers.Dense(64, activation='relu'),
-    layers.Dense(1, activation='sigmoid')  # Classification binaire (défaut ou non)
+    layers.Dense(6, activation='softmax')  # 6 classes, utilisation de softmax pour la classification multi-classe
 ])
 
 # Compilation du modèle
 model.compile(optimizer='adam',
-              loss='binary_crossentropy',
+              loss='sparse_categorical_crossentropy',
               metrics=['accuracy'])
 
 # Entraînement du modèle
@@ -70,4 +87,5 @@ history = model.fit(X_train, y_train, epochs=10, batch_size=32, validation_data=
 test_loss, test_acc = model.evaluate(X_test, y_test)
 print('Précision sur l\'ensemble de test:', test_acc)
 
-pip show tensorflow
+
+
