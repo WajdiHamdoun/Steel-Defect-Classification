@@ -243,6 +243,3 @@ plt.legend(['Train', 'Validation'], loc='upper left')
 plt.show()
 
 
-
-pip show tensorflow
-
