@@ -339,5 +339,7 @@ plt.show()
 
 
 
-pip install --upgrade tensorflow
+pip install matplotlib
 
+pip show tensorflow
+pip install opencv-python
