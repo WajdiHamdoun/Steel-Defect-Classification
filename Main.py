@@ -339,23 +339,15 @@ plt.show()
 
 
 
-
-
-
-
-
 import os
 import cv2
 import numpy as np
 from sklearn.model_selection import train_test_split
-from tensorflow.keras import layers, models, optimizers, callbacks, backend as K
+from tensorflow.keras import layers, models, optimizers, callbacks, losses
+from tensorflow.keras.applications import VGG16
+import tensorflow.keras.backend as K
 import matplotlib.pyplot as plt
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Lambda
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import EarlyStopping
-import numpy as np
-import matplotlib.pyplot as plt
+
 # Chargement des données
 Datadir = "E:\\pcd\\NEU database\\NEU database"
 target_size = (200, 200)
@@ -380,13 +372,8 @@ for img_name in os.listdir(Datadir):
     # Redimensionnement de l'image à la taille cible
     img = cv2.resize(img, target_size)
 
-    # Augmentation de contraste de l'image
-    alpha = 1.0  # Contrôle du contraste (1.0-3.0)
-    beta = 0  # Contrôle de la luminosité (0-100)
-    enhanced_img = cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
-
     # Conversion de l'image en niveaux de gris
-    gray_img = cv2.cvtColor(enhanced_img, cv2.COLOR_BGR2GRAY)
+    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # Application de la binarisation adaptative
     thresh_img = cv2.adaptiveThreshold(gray_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 101, 5)
@@ -415,62 +402,45 @@ augmented_labels = np.array(augmented_labels)
 X_train, X_temp, y_train, y_temp = train_test_split(augmented_data, augmented_labels, test_size=0.3, random_state=20)
 X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=20)
 
-# Chargement du modèle enseignant (teacher model)
-teacher_model = models.load_model('CNN.keras')
+# Chargement du modèle VGG16 entraîné
+vgg16_model = models.load_model("VGG16.keras")
 
-# Définition de l'architecture du modèle FCCNet avec la distillation des connaissances
-def FCCNet_teacher_distillation(temperature=3):
-    # Création du modèle
-    model = Sequential()
-    
-    # Ajout des couches de convolution et de pooling
-    model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(200, 200, 2)))  
-    model.add(MaxPooling2D((2, 2)))
-    model.add(Conv2D(64, (3, 3), activation='relu'))
-    model.add(MaxPooling2D((2, 2)))
-    model.add(Conv2D(128, (3, 3), activation='relu'))
-    model.add(MaxPooling2D((2, 2)))
-    model.add(Conv2D(128, (3, 3), activation='relu'))
-    model.add(MaxPooling2D((2, 2)))
-    
-    # Ajout de la couche Flatten
-    model.add(Flatten())
-    
-    # Ajout de la couche Dense avec distillation des connaissances
-    model.add(Dense(256, activation='relu'))
-    model.add(Lambda(lambda x: x / temperature))
-    
-    # Compilation du modèle
-    model.compile(optimizer=Adam(learning_rate=0.0001),
-                  loss=lambda y_true, y_pred: distillation_loss(y_true, y_pred, temperature),
-                  metrics=['accuracy'])
-    
-    return model
+# Construction du modèle FCCNet avec distillation des connaissances
+fccnet_input = layers.Input(shape=(200, 200, 2))
+fccnet_conv1 = layers.Conv2D(32, (3, 3), activation='relu')(fccnet_input)
+fccnet_pool1 = layers.MaxPooling2D((2, 2))(fccnet_conv1)
+fccnet_conv2 = layers.Conv2D(64, (3, 3), activation='relu')(fccnet_pool1)
+fccnet_pool2 = layers.MaxPooling2D((2, 2))(fccnet_conv2)
+fccnet_conv3 = layers.Conv2D(128, (3, 3), activation='relu')(fccnet_pool2)
+fccnet_pool3 = layers.MaxPooling2D((2, 2))(fccnet_conv3)
+fccnet_conv4 = layers.Conv2D(128, (3, 3), activation='relu')(fccnet_pool3)
+fccnet_pool4 = layers.MaxPooling2D((2, 2))(fccnet_conv4)
+fccnet_flat = layers.Flatten()(fccnet_pool4)
+fccnet_dense1 = layers.Dense(256, activation='relu')(fccnet_flat)
+fccnet_dropout = layers.Dropout(0.5)(fccnet_dense1)
+fccnet_output = layers.Dense(6, activation='softmax')(fccnet_dropout)
 
-# Fonction de perte pour la distillation des connaissances
-def distillation_loss(y_true, y_pred, temperature):
-    # Obtenir les prédictions du modèle enseignant sur les données d'entrée
-    y_true_teacher = teacher_model.predict(X_train)
-    
-    # Normaliser les prédictions du modèle enseignant et du modèle étudiant avec une fonction softmax
-    y_pred_softened = K.softmax(y_pred / temperature)
-    y_true_softened = K.softmax(y_true_teacher / temperature)
-    
-    # Calculer la perte de distillation en utilisant la divergence de Kullback-Leibler
-    return temperature**2 * K.mean(K.categorical_crossentropy(y_true_softened, y_pred_softened))
+# Création du modèle FCCNet
+fccnet_model = models.Model(inputs=fccnet_input, outputs=fccnet_output)
 
+# Fonction de perte personnalisée avec distillation des connaissances
+def knowledge_distillation_loss(y_true, y_pred, alpha=0.1, temperature=1):
+    y_soft = K.softmax(y_true / temperature)
+    y_pred_soft = K.softmax(y_pred / temperature)
+    return alpha * losses.categorical_crossentropy(y_soft, y_pred_soft) + (1 - alpha) * losses.categorical_crossentropy(y_true, y_pred)
 
-# Création du modèle FCCNet avec distillation des connaissances
-fccnet_model = FCCNet_teacher_distillation()
+# Compilation du modèle FCCNet avec la fonction de perte personnalisée
+fccnet_model.compile(optimizer=optimizers.Adam(learning_rate=0.0001),
+                     loss=lambda y_true, y_pred: knowledge_distillation_loss(y_true, y_pred, alpha=0.1, temperature=10),
+                     metrics=['accuracy'])
 
-# Entraînement du modèle avec Early Stopping
-early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
-history = fccnet_model.fit(X_train, y_train, epochs=50, batch_size=96, validation_data=(X_val, y_val), verbose=1,
-                           callbacks=[early_stopping])
+# Entraînement du modèle FCCNet avec distillation des connaissances
+history = fccnet_model.fit(X_train[:, :, :, :2], y_train, epochs=20, batch_size=32, validation_data=(X_val[:, :, :, :2], y_val), verbose=1,
+                           callbacks=[callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)])
 
-# Évaluation du modèle sur l'ensemble de test
-test_loss, test_acc = fccnet_model.evaluate(X_test, y_test)
-print('Précision sur l\'ensemble de test:', test_acc)
+# Évaluation du modèle FCCNet sur l'ensemble de test
+test_loss, test_acc = fccnet_model.evaluate(X_test[:, :, :, :2], y_test)
+print('Précision FCCNet sur l\'ensemble de test:', test_acc)
 
 # Plot training & validation accuracy values
 plt.plot(history.history['accuracy'])
@@ -489,3 +459,21 @@ plt.ylabel('Loss')
 plt.xlabel('Epoch')
 plt.legend(['Train', 'Validation'], loc='upper left')
 plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
