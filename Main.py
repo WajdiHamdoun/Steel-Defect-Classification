@@ -350,7 +350,12 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from tensorflow.keras import layers, models, optimizers, callbacks, backend as K
 import matplotlib.pyplot as plt
-
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Lambda
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import EarlyStopping
+import numpy as np
+import matplotlib.pyplot as plt
 # Chargement des données
 Datadir = "E:\\pcd\\NEU database\\NEU database"
 target_size = (200, 200)
@@ -411,32 +416,32 @@ X_train, X_temp, y_train, y_temp = train_test_split(augmented_data, augmented_la
 X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=20)
 
 # Chargement du modèle enseignant (teacher model)
-teacher_model = models.load_model('CNN.h5')
+teacher_model = models.load_model('CNN.keras')
 
 # Définition de l'architecture du modèle FCCNet avec la distillation des connaissances
 def FCCNet_teacher_distillation(temperature=3):
     # Création du modèle
-    model = models.Sequential()
+    model = Sequential()
     
     # Ajout des couches de convolution et de pooling
-    model.add(layers.Conv2D(32, (3, 3), activation='relu', input_shape=(200, 200, 2)))  
-    model.add(layers.MaxPooling2D((2, 2)))
-    model.add(layers.Conv2D(64, (3, 3), activation='relu'))
-    model.add(layers.MaxPooling2D((2, 2)))
-    model.add(layers.Conv2D(128, (3, 3), activation='relu'))
-    model.add(layers.MaxPooling2D((2, 2)))
-    model.add(layers.Conv2D(128, (3, 3), activation='relu'))
-    model.add(layers.MaxPooling2D((2, 2)))
+    model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(200, 200, 2)))  
+    model.add(MaxPooling2D((2, 2)))
+    model.add(Conv2D(64, (3, 3), activation='relu'))
+    model.add(MaxPooling2D((2, 2)))
+    model.add(Conv2D(128, (3, 3), activation='relu'))
+    model.add(MaxPooling2D((2, 2)))
+    model.add(Conv2D(128, (3, 3), activation='relu'))
+    model.add(MaxPooling2D((2, 2)))
     
     # Ajout de la couche Flatten
-    model.add(layers.Flatten())
+    model.add(Flatten())
     
     # Ajout de la couche Dense avec distillation des connaissances
-    model.add(layers.Dense(256, activation='relu'))
-    model.add(layers.Lambda(lambda x: x / temperature))
+    model.add(Dense(256, activation='relu'))
+    model.add(Lambda(lambda x: x / temperature))
     
     # Compilation du modèle
-    model.compile(optimizer=optimizers.Adam(learning_rate=0.0001),
+    model.compile(optimizer=Adam(learning_rate=0.0001),
                   loss=lambda y_true, y_pred: distillation_loss(y_true, y_pred, temperature),
                   metrics=['accuracy'])
     
@@ -446,25 +451,23 @@ def FCCNet_teacher_distillation(temperature=3):
 def distillation_loss(y_true, y_pred, temperature):
     # Obtenir les prédictions du modèle enseignant sur les données d'entrée
     y_true_teacher = teacher_model(X_train, training=False)
-    
-    # Réduire les dimensions des sorties du modèle enseignant pour correspondre au modèle étudiant
-    y_true_teacher = layers.Dense(6, activation='softmax')(y_true_teacher)
-    
-    # Softmax tempérée des prédictions du modèle étudiant
-    y_pred_softened = K.softmax(y_pred / temperature)
-    
-    # Softmax tempérée des prédictions du modèle enseignant
-    y_true_softened = K.softmax(y_true_teacher / temperature)
-    
-    # Calcul de la perte de distillation en utilisant la divergence de Kullback-Leibler
-    return temperature**2 * K.mean(K.categorical_crossentropy(y_true_softened, y_pred_softened))
+    y_true_teacher = layers.Softmax()(y_true_teacher / temperature)
+
+    # Normaliser les prédictions du modèle étudiant avec une fonction softmax
+    y_pred_softened = layers.Softmax()(y_pred / temperature)
+
+    # Calculer la perte de distillation en utilisant la divergence de Kullback-Leibler
+    distillation_loss = -K.mean(K.sum(y_true_teacher * K.log(y_pred_softened), axis=-1))
+
+    return temperature**2 * distillation_loss
 
 # Création du modèle FCCNet avec distillation des connaissances
 fccnet_model = FCCNet_teacher_distillation()
 
-# Entraînement du modèle avec distillation des connaissances
+# Entraînement du modèle avec Early Stopping
+early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
 history = fccnet_model.fit(X_train, y_train, epochs=50, batch_size=96, validation_data=(X_val, y_val), verbose=1,
-                           callbacks=[callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)])
+                           callbacks=[early_stopping])
 
 # Évaluation du modèle sur l'ensemble de test
 test_loss, test_acc = fccnet_model.evaluate(X_test, y_test)
@@ -487,4 +490,3 @@ plt.ylabel('Loss')
 plt.xlabel('Epoch')
 plt.legend(['Train', 'Validation'], loc='upper left')
 plt.show()
-
