@@ -450,16 +450,15 @@ def FCCNet_teacher_distillation(temperature=3):
 # Fonction de perte pour la distillation des connaissances
 def distillation_loss(y_true, y_pred, temperature):
     # Obtenir les prédictions du modèle enseignant sur les données d'entrée
-    y_true_teacher = teacher_model(X_train, training=False)
-    y_true_teacher = layers.Softmax()(y_true_teacher / temperature)
-
-    # Normaliser les prédictions du modèle étudiant avec une fonction softmax
-    y_pred_softened = layers.Softmax()(y_pred / temperature)
-
+    y_true_teacher = teacher_model.predict(X_train)
+    
+    # Normaliser les prédictions du modèle enseignant et du modèle étudiant avec une fonction softmax
+    y_pred_softened = K.softmax(y_pred / temperature)
+    y_true_softened = K.softmax(y_true_teacher / temperature)
+    
     # Calculer la perte de distillation en utilisant la divergence de Kullback-Leibler
-    distillation_loss = -K.mean(K.sum(y_true_teacher * K.log(y_pred_softened), axis=-1))
+    return temperature**2 * K.mean(K.categorical_crossentropy(y_true_softened, y_pred_softened))
 
-    return temperature**2 * distillation_loss
 
 # Création du modèle FCCNet avec distillation des connaissances
 fccnet_model = FCCNet_teacher_distillation()
