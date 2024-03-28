@@ -620,7 +620,9 @@ from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.layers import DepthwiseConv2D, Reshape
 from tensorflow.keras import layers, models, optimizers, callbacks
+from tensorflow.keras.layers import Lambda
 from tensorflow.keras.applications import MobileNetV2
+from tensorflow.keras.losses import SparseCategoricalCrossentropy, KLDivergence
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Layer
 from tensorflow.keras.layers import Conv2D, Dense, Dropout, GlobalAveragePooling2D, Input, Activation, DepthwiseConv2D, Add, BatchNormalization
@@ -734,7 +736,20 @@ def shuffle_unit(inputs, groups):
 
     import keras.backend as K
     from keras.layers import ZeroPadding2D
-    inputs = ZeroPadding2D(padding=((0, 0), (0, 0)))(inputs)
+    # Define a function to pad the last dimension
+    def pad_last_dim(x):
+     import tensorflow as tf
+     return tf.pad(x, [[0, 0], [0, 0], [0, 0], [0, channels - residual_channels]])
+
+    
+    # Define a Lambda layer to apply the padding
+    output_shape = (200, 200, channels)
+
+# Créer la couche Lambda avec la forme de sortie spécifiée
+    pad_last_dim_layer = Lambda(pad_last_dim, output_shape=output_shape)
+
+# Appliquer le rembourrage à residual_path
+    residual_path = pad_last_dim_layer(residual_path)
 
     # Concaténer les chemins résiduels et principaux
     x = Add()([inputs, residual_path])
@@ -775,13 +790,16 @@ fccnet_model = Model(inputs=fccnet_input, outputs=fccnet_output)
 
 # Compilation du modèle FCCNet
 fccnet_model.compile(optimizer=optimizers.Adam(learning_rate=0.0001),
-                     loss='sparse_categorical_crossentropy',
-                     metrics=['accuracy'])
+                     loss={'output_classification': SparseCategoricalCrossentropy(from_logits=True),
+                           'output_regularization': 'mean_squared_error'},
+                     metrics={'output_classification': 'accuracy'},
+                     loss_weights={'output_classification': 1.0, 'output_regularization': 0.5})
 
 # Entraînement du modèle FCCNet avec distillation des connaissances
-history = fccnet_model.fit(X_train[:, :, :, :2], y_train, epochs=30, batch_size=64, validation_data=(X_val[:, :, :, :2], y_val), verbose=1,
-                           callbacks=[callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True),
-                                      callbacks.KLDivergenceRegularizer(Asnet_model.layers[-1].output, weight=0.5)])
+history = fccnet_model.fit(X_train[:, :, :, :2], {'output_classification': y_train, 'output_regularization': np.zeros_like(y_train)},
+                           epochs=30, batch_size=64, validation_data=(X_val[:, :, :, :2], {'output_classification': y_val, 'output_regularization': np.zeros_like(y_val)}), 
+                           verbose=1, callbacks=[callbacks.EarlyStopping(monitor='val_output_classification_loss', patience=5, restore_best_weights=True)])
+
 
 # Évaluation du modèle FCCNet sur l'ensemble de test
 test_loss, test_acc = fccnet_model.evaluate(X_test[:, :, :, :2], y_test)
