@@ -834,3 +834,172 @@ print('Classification Report:\n', report)
 
 
 
+
+#VGG19
+import os
+import cv2
+import numpy as np
+from sklearn.model_selection import train_test_split
+from tensorflow.keras import layers, models, optimizers, callbacks
+from tensorflow.keras.applications.vgg19 import preprocess_input
+from tensorflow.keras.applications import VGG19
+import matplotlib.pyplot as plt
+from sklearn.metrics import classification_report
+
+# Chargement des données
+Datadir = "E:\\pcd\\NEU database\\NEU database"
+target_size = (224, 224)  # VGG19 requires input images to be resized to (224, 224)
+
+# Mapping categories to numerical labels
+category_to_label = {'Cr': 0, 'In': 1, 'Pa': 2, 'PS': 3, 'RS': 4, 'Sc': 5}
+
+# Placeholder for augmented data
+# Placeholder for augmented data
+augmented_data = []
+augmented_labels = []
+
+# Boucle à travers chaque image dans le répertoire du dataset
+for img_name in os.listdir(Datadir):
+    img_path = os.path.join(Datadir, img_name)
+
+    # Lecture de l'image avec gestion des erreurs
+    img = cv2.imread(img_path)
+    if img is None:
+        print(f"Error reading image: {img_path}")
+        continue
+        
+    # Redimensionnement de l'image à la taille cible
+    img = cv2.resize(img, target_size)
+
+    # Ajouter l'image originale et son étiquette
+    category = img_name.split('_')[0]  # Extracting category from the image name
+    if category in category_to_label:
+        augmented_data.append(img)
+        augmented_labels.append(category_to_label[category])
+    else:
+        print(f"Category '{category}' not found in category_to_label dictionary.")
+
+    # Conversion de l'image en niveaux de gris
+    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # Application de la binarisation adaptative
+    thresh_img = cv2.adaptiveThreshold(gray_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 101, 5)
+    augmented_data.append(thresh_img)
+    augmented_labels.append(category_to_label[category])
+
+    
+
+# Convert lists to numpy arrays
+augmented_data = np.array(augmented_data)
+augmented_labels = np.array(augmented_labels)
+
+
+# Division des données en ensembles d'entraînement (70%), de validation (15%) et de test (15%)
+X_train, X_temp, y_train, y_temp = train_test_split(augmented_data, augmented_labels, test_size=0.3, random_state=20)
+X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=20)
+
+# Preprocess the data for VGG19
+X_train = preprocess_input(X_train)
+X_val = preprocess_input(X_val)
+X_test = preprocess_input(X_test)
+
+# Load the pre-trained VGG19 model
+base_model = VGG19(weights=None, include_top=False, input_shape=(224, 224, 3))
+
+# Freeze the layers in the base model
+for layer in base_model.layers:
+    layer.trainable = False
+
+# Add custom classification layers on top of the base model
+model = models.Sequential([
+    base_model,
+    layers.Flatten(),  # Flatten the output of the base model
+    layers.Dense(256, activation='relu'),  # Add a dense layer with 256 units
+    layers.Dropout(0.5),  # Add a dropout layer for regularization
+    layers.Dense(6, activation='softmax')  # Add the final dense layer with 6 units for classification
+])
+# Compilation du modèle
+model.compile(optimizer=optimizers.Adam(learning_rate=0.0001),
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
+
+# Entraînement du modèle avec early stopping
+history = model.fit(X_train, y_train, epochs=15, batch_size=64, validation_data=(X_val, y_val), verbose=1,
+                    callbacks=[callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)])
+
+# Évaluation du modèle sur l'ensemble de test
+test_loss, test_acc = model.evaluate(X_test, y_test)
+print('Précision sur l\'ensemble de test:', test_acc)
+
+# Plot training & validation accuracy values
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title('Model accuracy')
+plt.ylabel('Accuracy')
+plt.xlabel('Epoch')
+plt.legend(['Train', 'Validation'], loc='upper left')
+plt.show()
+
+# Plot training & validation loss values
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('Model loss')
+plt.ylabel('Loss')
+plt.xlabel('Epoch')
+plt.legend(['Train', 'Validation'], loc='upper left')
+plt.show()
+
+
+y_pred = np.argmax(model.predict(X_test), axis=-1)
+
+# Calculate additional metrics
+report = classification_report(y_test, y_pred)
+print('Classification Report:\n', report)
+model.save("VGG.keras")
+
+
+
+
+
+
+
+
+from tensorflow.keras.models import load_model
+
+# Load the trained model
+model = load_model("VGG.keras")
+
+# Load the images for testing
+test_images = [...]  # List of paths to the test images
+
+# Preprocess the test images
+preprocessed_test_images = []
+for img_path in test_images:
+    img = cv2.imread(img_path)
+    img = cv2.resize(img, target_size)
+    img = preprocess_input(img)
+    preprocessed_test_images.append(img)
+
+# Convert the list of images to numpy array
+preprocessed_test_images = np.array(preprocessed_test_images)
+
+# Make predictions
+predictions = model.predict(preprocessed_test_images)
+
+# Convert predictions to class labels
+predicted_labels = np.argmax(predictions, axis=-1)
+
+# Print predicted labels
+print("Predicted labels:", predicted_labels)
+
+# Optionally, if you have ground truth labels for the test images
+ground_truth_labels = [...]  # List of ground truth labels
+ground_truth_labels = np.array(ground_truth_labels)
+
+# Compare predicted labels with ground truth labels
+accuracy = np.mean(predicted_labels == ground_truth_labels)
+print("Accuracy:", accuracy)
+
+
+
+
