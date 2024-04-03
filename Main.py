@@ -878,14 +878,7 @@ for img_name in os.listdir(Datadir):
         augmented_labels.append(category_to_label[category])
     else:
         print(f"Category '{category}' not found in category_to_label dictionary.")
-
-    # Conversion de l'image en niveaux de gris
-    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    # Application de la binarisation adaptative
-    thresh_img = cv2.adaptiveThreshold(gray_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 101, 5)
-    augmented_data.append(thresh_img)
-    augmented_labels.append(category_to_label[category])
+    
 
     
 
@@ -964,42 +957,83 @@ model.save("VGG.keras")
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import os
+import cv2
+import numpy as np
+import tensorflow as tf
 from tensorflow.keras.models import load_model
+import json
 
-# Load the trained model
-model = load_model("VGG.keras")
+# Charger le modèle
+with open("C:\\Users\\wajdi\\Documents\\GitHub\\PCD\\CNN.json", "r") as json_file:
+    loaded = json_file.read()
+model = tf.keras.models.model_from_json(loaded)
+model.load_weights("CNN.h5")
 
-# Load the images for testing
-test_images = [...]  # List of paths to the test images
+# Chemin vers le dossier contenant les images de test
+test_folder = "C:\\Users\\wajdi\\Desktop\\images1"
+output_folder = "C:\\Users\\wajdi\\Desktop\\images2"
+target_size = (200, 200)
 
-# Preprocess the test images
-preprocessed_test_images = []
-for img_path in test_images:
+# Liste pour stocker les étiquettes prédites
+predicted_labels = []
+
+# Boucle à travers chaque image dans le dossier de test
+for img_name in os.listdir(test_folder):
+    img_path = os.path.join(test_folder, img_name)
+    
+    # Lire et prétraiter l'image
     img = cv2.imread(img_path)
-    img = cv2.resize(img, target_size)
-    img = preprocess_input(img)
-    preprocessed_test_images.append(img)
+    img = cv2.resize(img, target_size)  # Redimensionner l'image pour correspondre à la taille d'entrée du modèle
+    
+    # Augmentation de contraste
+    enhanced_img = cv2.convertScaleAbs(img, alpha=1.0, beta=0)
+    
+    # Conversion en niveaux de gris
+    gray_img = cv2.cvtColor(enhanced_img, cv2.COLOR_BGR2GRAY)
+    
+    # Application de la binarisation adaptative
+    _, thresh_img = cv2.threshold(gray_img, 127, 255, cv2.THRESH_BINARY)
 
-# Convert the list of images to numpy array
-preprocessed_test_images = np.array(preprocessed_test_images)
+    zeros_img = np.zeros_like(thresh_img)
 
-# Make predictions
-predictions = model.predict(preprocessed_test_images)
+    # Stack the images together along the channel axis
+    stacked_img = np.stack([gray_img, zeros_img], axis=-1)
 
-# Convert predictions to class labels
-predicted_labels = np.argmax(predictions, axis=-1)
+    # Ajouter une dimension de lot
+    stacked_img = np.expand_dims(stacked_img, axis=0)
+        
+    # Prédire les probabilités de classe
+    predictions = model.predict(stacked_img)
+    
+    # Obtenir l'étiquette prédite
+    predicted_label = np.argmax(predictions)
+    # Enregistrer l'image traitée au format BMP
+    output_path_bmp = os.path.splitext(output_path)[0] + ".bmp"
+    cv2.imwrite(output_path_bmp, stacked_img)
 
-# Print predicted labels
-print("Predicted labels:", predicted_labels)
+    # Map the predicted label back to category
+    label_to_category = {0: 'Cr', 1: 'In', 2: 'Pa', 3: 'PS', 4: 'RS', 5: 'Sc'}
+    predicted_category = label_to_category[predicted_label]
+    
+    # Ajouter l'étiquette prédite à la liste
+    predicted_labels.append(predicted_category)
 
-# Optionally, if you have ground truth labels for the test images
-ground_truth_labels = [...]  # List of ground truth labels
-ground_truth_labels = np.array(ground_truth_labels)
-
-# Compare predicted labels with ground truth labels
-accuracy = np.mean(predicted_labels == ground_truth_labels)
-print("Accuracy:", accuracy)
-
-
-
+# Afficher les étiquettes prédites
+for img_name, predicted_label in zip(os.listdir(test_folder), predicted_labels):
+    print(f"Image: {img_name}, Predicted Label: {predicted_label}")
 
