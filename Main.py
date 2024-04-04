@@ -1,211 +1,188 @@
 import os
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.model_selection import train_test_split
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, TensorDataset
+from torchvision import models, transforms
+from torch.utils.data import DataLoader, Dataset
+from sklearn.metrics import classification_report
+import matplotlib.pyplot as plt
+
+# Définition de la classe du dataset
+class CustomDataset(Dataset):
+    def __init__(self, data, labels, transform=None):
+        self.data = data
+        self.labels = labels
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        image = self.data[idx]
+        label = self.labels[idx]
+
+        if self.transform:
+            image = self.transform(image)
+
+        return image, label
 
 # Chargement des données
 Datadir = "E:\\pcd\\NEU database\\NEU database"
-
-target_size = (200, 200) 
+target_size = (224, 224)  # VGG19 requires input images to be resized to (224, 224)
 
 # Mapping categories to numerical labels
 category_to_label = {'Cr': 0, 'In': 1, 'Pa': 2, 'PS': 3, 'RS': 4, 'Sc': 5}
 
-# Placeholder for labels
-labels = []
-
-# Placeholder for augmented data
+# Charger les données et les étiquettes
 augmented_data = []
+augmented_labels = []
 
-# Boucle à travers chaque image dans le répertoire du dataset
 for img_name in os.listdir(Datadir):
     img_path = os.path.join(Datadir, img_name)
-    
-    # Lecture de l'image avec gestion des erreurs
     img = cv2.imread(img_path)
     if img is None:
         print(f"Error reading image: {img_path}")
         continue
-    
-    
-    # Redimensionnement de l'image à la taille cible
     img = cv2.resize(img, target_size)
-    
-    # Augmentation de contraste de l'image
-    alpha = 1.0  # Contrôle du contraste (1.0-3.0)
-    beta = 0  # Contrôle de la luminosité (0-100)
-    enhanced_img = cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
-        
-    # Conversion de l'image en niveaux de gris
-    gray_img = cv2.cvtColor(enhanced_img, cv2.COLOR_BGR2GRAY)
-        
-    # Application de la binarisation adaptative
-    thresh_img = cv2.adaptiveThreshold(gray_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 101, 5)
-        
-    # Extraire la catégorie à partir du nom de l'image
-    category = img_name.split('_')[0]  # Supposant que la catégorie est la première partie du nom de l'image
-    
-    # Assigner une étiquette numérique à la catégorie
-    label = category_to_label[category]
-    
-    # Ajouter l'étiquette à la liste des étiquettes
-    labels.append(label)
-    
-    # Ajouter les données augmentées à la liste
-    augmented_data.extend([gray_img, thresh_img])
+    category = img_name.split('_')[0]
+    if category in category_to_label:
+        augmented_data.append(img)
+        augmented_labels.append(category_to_label[category])
+    else:
+        print(f"Category '{category}' not found in category_to_label dictionary.")
+        continue
+    img_horizontal = cv2.flip(img, 1)
+    augmented_data.append(img_horizontal)
+    augmented_labels.append(category_to_label[category])
+    img_vertical = cv2.flip(img, 0)
+    augmented_data.append(img_vertical)
+    augmented_labels.append(category_to_label[category])
 
-# Conversion des listes en tableaux numpy
 augmented_data = np.array(augmented_data)
-labels = np.array(labels)
-
-# Regroupement des données et des étiquettes
-data_with_labels = list(zip(augmented_data, labels))
+augmented_labels = np.array(augmented_labels)
 
 # Division des données en ensembles d'entraînement (70%), de validation (15%) et de test (15%)
-train_data, test_data = train_test_split(data_with_labels, test_size=0.3, random_state=42)
-val_data, test_data = train_test_split(test_data, test_size=0.5, random_state=42)
+X_train, X_temp, y_train, y_temp = train_test_split(augmented_data, augmented_labels, test_size=0.3, random_state=20)
+X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=20)
 
-# Séparation des données d'entraînement, de validation et de test et de leurs étiquettes
-X_train, y_train = zip(*train_data)
-X_val, y_val = zip(*val_data)
-X_test, y_test = zip(*test_data)
+# Transformations d'images
+data_transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
 
-# Conversion des listes en tableaux numpy
-X_train = np.array(X_train)
-y_train = np.array(y_train)
-X_val = np.array(X_val)
-y_val = np.array(y_val)
-X_test = np.array(X_test)
-y_test = np.array(y_test)
+# Création des datasets et dataloaders
+train_dataset = CustomDataset(X_train, y_train, transform=data_transform)
+val_dataset = CustomDataset(X_val, y_val, transform=data_transform)
+test_dataset = CustomDataset(X_test, y_test, transform=data_transform)
 
-# Conversion des données en tenseurs PyTorch
-X_train_tensor = torch.tensor(X_train).float()
-y_train_tensor = torch.tensor(y_train).long()
-X_val_tensor = torch.tensor(X_val).float()
-y_val_tensor = torch.tensor(y_val).long()
-X_test_tensor = torch.tensor(X_test).float()
-y_test_tensor = torch.tensor(y_test).long()
+train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
+test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
 
-# Construction du modèle CNN avec PyTorch
-class CNN(nn.Module):
-    def __init__(self):
-        super(CNN, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, 3)
-        self.conv2 = nn.Conv2d(32, 64, 3)
-        self.conv3 = nn.Conv2d(64, 64, 3)
-        self.pool = nn.MaxPool2d(2, 2)
-        
-        # Calcul de la taille de l'entrée de la couche entièrement connectée
-        self.fc_input_size = self.calculate_fc_input_size()
-        
-        self.fc1 = nn.Linear(self.fc_input_size, 64)
-        self.fc2 = nn.Linear(64, 6)  # 6 classes, utilisant softmax pour la classification multi-classe
+# Chargement du modèle pré-entraîné VGG19
+model = models.vgg19(pretrained=True)
 
-    def forward(self, x):
-        x = self.pool(nn.functional.relu(self.conv1(x)))
-        x = self.pool(nn.functional.relu(self.conv2(x)))
-        x = self.pool(nn.functional.relu(self.conv3(x)))
-        
-        # Ajustement de la taille de l'entrée pour la couche entièrement connectée
-        x = x.view(-1, self.fc_input_size)
-        
-        x = nn.functional.relu(self.fc1(x))
-        x = self.fc2(x)
-        return x
-    
-    def calculate_fc_input_size(self):
-        # Calcul de la taille de l'entrée à partir de la taille de l'image d'entrée
-        # et des opérations de pooling et de convolution
-        x = torch.randn(1, 1, 200, 200)  # Crée un tenseur d'exemple avec la même taille que l'entrée
-        x = self.pool(nn.functional.relu(self.conv1(x)))
-        x = self.pool(nn.functional.relu(self.conv2(x)))
-        x = self.pool(nn.functional.relu(self.conv3(x)))
-        return x.view(1, -1).size(1)
-
-
-model = CNN()
+# Remplacement de la dernière couche entièrement connectée
+num_features = model.classifier[6].in_features
+features = list(model.classifier.children())[:-1]  # Remove last layer
+features.extend([nn.Linear(num_features, 256), nn.ReLU(inplace=True), nn.Dropout(0.5), nn.Linear(256, 6)])  # Add custom layers
+model.classifier = nn.Sequential(*features)
 
 # Définition de la fonction de perte et de l'optimiseur
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.0001)
 
 # Entraînement du modèle
-history = {'accuracy': [], 'val_accuracy': [], 'loss': [], 'val_loss': []}  # Historique d'entraînement
-for epoch in range(20):
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = model.to(device)
+num_epochs = 15
+best_val_loss = float('inf')
+patience = 5
+counter = 0
+
+for epoch in range(num_epochs):
+    model.train()
     running_loss = 0.0
-    running_accuracy = 0.0
-    for i in range(0, len(X_train_tensor), 32):
-        inputs, labels = X_train_tensor[i:i+32], y_train_tensor[i:i+32]
-
-        # Remettre à zéro les gradients
+    for images, labels in train_loader:
+        images, labels = images.to(device), labels.to(device)
         optimizer.zero_grad()
-
-        # Forward pass
-        outputs = model(inputs.unsqueeze(1))
+        outputs = model(images)
         loss = criterion(outputs, labels)
-
-        # Backward pass and optimization
         loss.backward()
         optimizer.step()
-        running_loss += loss.item()
+        running_loss += loss.item() * images.size(0)
 
-        running_loss += loss.item()
-        _, predicted = torch.max(outputs, 1)
-        running_accuracy += (predicted == labels).sum().item() / len(y_train_tensor)
-    print(f"Epoch {epoch+1},Run Accuracy: { running_accuracy}, Loss: {running_loss / len(X_train_tensor)}")
-           
-    # Évaluation sur l'ensemble de validation
+    epoch_loss = running_loss / len(train_loader.dataset)
+
+    model.eval()
+    val_loss = 0.0
+    correct = 0
+    total = 0
     with torch.no_grad():
-        outputs = model(X_val_tensor.unsqueeze(1))
+        for images, labels in val_loader:
+            images, labels = images.to(device), labels.to(device)
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+            val_loss += loss.item() * images.size(0)
+            _, predicted = torch.max(outputs, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+
+    val_loss /= len(val_loader.dataset)
+    val_accuracy = correct / total
+
+    print(f'Epoch [{epoch + 1}/{num_epochs}], '
+          f'Train Loss: {epoch_loss:.4f}, '
+          f'Val Loss: {val_loss:.4f}, '
+          f'Val Accuracy: {val_accuracy:.4f}')
+
+    # Early stopping
+    if val_loss < best_val_loss:
+        best_val_loss = val_loss
+        counter = 0
+        torch.save(model.state_dict(), 'best_model.pth')
+    else:
+        counter += 1
+        if counter >= patience:
+            print("Early stopping")
+            break
+
+# Évaluation du modèle sur l'ensemble de test
+model.load_state_dict(torch.load('best_model.pth'))
+model.eval()
+correct = 0
+total = 0
+with torch.no_grad():
+    for images, labels in test_loader:
+        images, labels = images.to(device), labels.to(device)
+        outputs = model(images)
         _, predicted = torch.max(outputs, 1)
-        val_accuracy = (predicted == y_val_tensor).sum().item() / len(y_val_tensor)
-        val_loss = criterion(outputs, y_val_tensor)
-        print(f'Validation Accuracy: {val_accuracy}, Validation Loss: {val_loss.item()}')
-        history['val_accuracy'].append(val_accuracy)
-        history['val_loss'].append(val_loss.item())
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
 
-    # Enregistrer l'historique d'entraînement
-    history['accuracy'].append((running_accuracy))
-    history['loss'].append(running_loss)
+test_accuracy = correct / total
+print('Accuracy on test set:', test_accuracy)
 
-# Affichage des courbes
-# Accuracy
-plt.plot(history['accuracy'])
-plt.plot(history['val_accuracy'])
-plt.title('Model accuracy')
-plt.ylabel('Accuracy')
-plt.xlabel('Epoch')
-plt.legend(['Train', 'Validation'], loc='upper left')
-plt.show()
+# Calcul des prédictions et du rapport de classification
+model.eval()
+y_pred = []
+y_true = []
+with torch.no_grad():
+    for images, labels in test_loader:
+        images, labels = images.to(device), labels.to(device)
+        outputs = model(images)
+        _, predicted = torch.max(outputs.data, 1)
+        y_pred.extend(predicted.cpu().numpy())
+        y_true.extend(labels.cpu().numpy())
 
-# Loss
-plt.plot(history['loss'])
-plt.plot(history['val_loss'])
-plt.title('Model loss')
-plt.ylabel('Loss')
-plt.xlabel('Epoch')
-plt.legend(['Train', 'Validation'], loc='upper left')
-plt.show()
+report = classification_report(y_true, y_pred)
+print('Classification Report:\n', report)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+torch.save(model.state_dict(), 'best_model.pth')
 
 
 
@@ -843,18 +820,17 @@ from sklearn.model_selection import train_test_split
 from tensorflow.keras import layers, models, optimizers, callbacks
 from tensorflow.keras.applications.vgg19 import preprocess_input
 from tensorflow.keras.applications import VGG19
-import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report
+import matplotlib.pyplot as plt
 
 # Chargement des données
-Datadir = "E:\\pcd\\NEU database\\NEU database"
+Datadir = "C:/Users/pc/Desktop/NEU surface defect database"
 target_size = (224, 224)  # VGG19 requires input images to be resized to (224, 224)
 
 # Mapping categories to numerical labels
 category_to_label = {'Cr': 0, 'In': 1, 'Pa': 2, 'PS': 3, 'RS': 4, 'Sc': 5}
 
-# Placeholder for augmented data
-# Placeholder for augmented data
+
 augmented_data = []
 augmented_labels = []
 
@@ -878,9 +854,20 @@ for img_name in os.listdir(Datadir):
         augmented_labels.append(category_to_label[category])
     else:
         print(f"Category '{category}' not found in category_to_label dictionary.")
-    
 
+    # Flip the image horizontally
+    img_horizontal = cv2.flip(img, 1)
     
+    # Ajouter l'image horizontalement flipée et sa même étiquette
+    augmented_data.append(img_horizontal)
+    augmented_labels.append(category_to_label[category])
+    
+    # Flip the image vertically
+    img_vertical = cv2.flip(img, 0)
+    
+    # Ajouter l'image verticalement flipée et sa même étiquette
+    augmented_data.append(img_vertical)
+    augmented_labels.append(category_to_label[category])
 
 # Convert lists to numpy arrays
 augmented_data = np.array(augmented_data)
@@ -897,20 +884,25 @@ X_val = preprocess_input(X_val)
 X_test = preprocess_input(X_test)
 
 # Load the pre-trained VGG19 model
-base_model = VGG19(weights=None, include_top=False, input_shape=(224, 224, 3))
-
+base_model = VGG19(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
 # Freeze the layers in the base model
 for layer in base_model.layers:
     layer.trainable = False
+# Create a new Sequential model
+model = models.Sequential()
 
-# Add custom classification layers on top of the base model
-model = models.Sequential([
-    base_model,
-    layers.Flatten(),  # Flatten the output of the base model
-    layers.Dense(256, activation='relu'),  # Add a dense layer with 256 units
-    layers.Dropout(0.5),  # Add a dropout layer for regularization
-    layers.Dense(6, activation='softmax')  # Add the final dense layer with 6 units for classification
-])
+# Add the pre-trained VGG19 model to the new model
+model.add(base_model)
+
+# Add the Flatten layer explicitly
+model.add(layers.Flatten())
+
+# Add custom classification layers on top of the Flatten layer
+model.add(layers.Dense(256, activation='relu'))
+model.add(layers.Dropout(0.5))
+model.add(layers.Dense(6, activation='softmax'))
+
+
 # Compilation du modèle
 model.compile(optimizer=optimizers.Adam(learning_rate=0.0001),
               loss='sparse_categorical_crossentropy',
@@ -920,6 +912,11 @@ model.compile(optimizer=optimizers.Adam(learning_rate=0.0001),
 history = model.fit(X_train, y_train, epochs=15, batch_size=64, validation_data=(X_val, y_val), verbose=1,
                     callbacks=[callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)])
 
+model.save_weights("VGG.weights.h5")
+json_string = model.to_json()
+with open("vgg.json", "w") as f:
+    f.write(json_string)
+model.save("VGG.keras")
 # Évaluation du modèle sur l'ensemble de test
 test_loss, test_acc = model.evaluate(X_test, y_test)
 print('Précision sur l\'ensemble de test:', test_acc)
@@ -942,15 +939,11 @@ plt.xlabel('Epoch')
 plt.legend(['Train', 'Validation'], loc='upper left')
 plt.show()
 
-
 y_pred = np.argmax(model.predict(X_test), axis=-1)
 
 # Calculate additional metrics
 report = classification_report(y_test, y_pred)
 print('Classification Report:\n', report)
-model.save("VGG.keras")
-
-
 
 
 
@@ -975,6 +968,7 @@ import os
 import cv2
 import numpy as np
 import tensorflow as tf
+import matplotlib.pyplot as plt
 from tensorflow.keras.models import load_model
 import json
 
@@ -985,7 +979,7 @@ model = tf.keras.models.model_from_json(loaded)
 model.load_weights("CNN.h5")
 
 # Chemin vers le dossier contenant les images de test
-test_folder = "C:\\Users\\wajdi\\Desktop\\images1"
+test_folder = "C:\\Users\\wajdi\\Desktop\\images"
 output_folder = "C:\\Users\\wajdi\\Desktop\\images2"
 target_size = (200, 200)
 
@@ -1013,18 +1007,22 @@ for img_name in os.listdir(test_folder):
 
     # Stack the images together along the channel axis
     stacked_img = np.stack([gray_img, zeros_img], axis=-1)
+    
 
     # Ajouter une dimension de lot
     stacked_img = np.expand_dims(stacked_img, axis=0)
+    plt.imshow(stacked_img[0, ..., 0], cmap='gray')  # Affiche la première canal en niveaux de gris
+
+    plt.axis('off')  # Désactive les axes
+    plt.show()
+
         
     # Prédire les probabilités de classe
     predictions = model.predict(stacked_img)
     
     # Obtenir l'étiquette prédite
     predicted_label = np.argmax(predictions)
-    # Enregistrer l'image traitée au format BMP
-    output_path_bmp = os.path.splitext(output_path)[0] + ".bmp"
-    cv2.imwrite(output_path_bmp, stacked_img)
+    
 
     # Map the predicted label back to category
     label_to_category = {0: 'Cr', 1: 'In', 2: 'Pa', 3: 'PS', 4: 'RS', 5: 'Sc'}
@@ -1037,3 +1035,70 @@ for img_name in os.listdir(test_folder):
 for img_name, predicted_label in zip(os.listdir(test_folder), predicted_labels):
     print(f"Image: {img_name}, Predicted Label: {predicted_label}")
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import os
+import cv2
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras.models import load_model
+from tensorflow.keras.applications.vgg19 import preprocess_input
+with open("C:\\Users\\wajdi\\Documents\\GitHub\\PCD\\vgg.json", "r") as json_file:
+    loaded = json_file.read()
+model = tf.keras.models.model_from_json(loaded)
+model.load_weights("VGG.weights.h5")
+
+
+# Path to the folder containing test images
+test_folder = "C:\\Users\\wajdi\\Desktop\\images"
+
+# List to store predicted labels
+predicted_labels = []
+
+# Loop through each image in the test folder
+for img_name in os.listdir(test_folder):
+    img_path = os.path.join(test_folder, img_name)
+    
+    # Read and preprocess the image
+    img = cv2.imread(img_path)
+    img = cv2.resize(img, (224, 224))  # Resize image to match the input size of VGG19
+    img = preprocess_input(img)
+    img = np.expand_dims(img, axis=0)  # Add batch dimension
+    
+    # Predict the class probabilities
+    predictions = model.predict(img)
+    
+    # Get the predicted label
+    predicted_label = np.argmax(predictions)
+    
+    # Map the predicted label back to category
+    label_to_category = {0: 'Cr', 1: 'In', 2: 'Pa', 3: 'PS', 4: 'RS', 5: 'Sc'}
+    predicted_category = label_to_category[predicted_label]
+    
+    # Append the predicted label to the list
+    predicted_labels.append(predicted_category)
+
+# Display the predicted labels
+for img_name, predicted_label in zip(os.listdir(test_folder), predicted_labels):
+    print(f"Image: {img_name}, Predicted Label: {predicted_label}")
