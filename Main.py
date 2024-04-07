@@ -1101,4 +1101,153 @@ for img_name in os.listdir(test_folder):
 
 # Display the predicted labels
 for img_name, predicted_label in zip(os.listdir(test_folder), predicted_labels):
+<<<<<<< Updated upstream
     print(f"Image: {img_name}, Predicted Label: {predicted_label}")
+=======
+    print(f"Image: {img_name}, Predicted Label: {predicted_label}")
+    
+
+
+
+
+#interface
+import tkinter as tk
+from tkinter import filedialog, messagebox, ttk
+import numpy as np
+import cv2
+import os
+from matplotlib import pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from collections import Counter
+from tensorflow.keras.applications import VGG19
+from tensorflow.keras import layers, models
+from tensorflow.keras.applications.vgg19 import preprocess_input
+
+#loading the model
+base_model1 = VGG19(weights=None, include_top=False, input_shape=(224, 224, 3))
+for layer in base_model1.layers:
+    layer.trainable = False
+
+model1 = models.Sequential([
+    base_model1,
+    layers.Flatten(),
+    layers.Dense(256, activation='relu'),
+    layers.Dropout(0.5),
+    layers.Dense(6, activation='softmax')
+])
+_ = model1(np.random.random((1, 224, 224, 3)))
+
+model1.load_weights('VGG.weights.h5')
+
+
+class Application(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title('Steel Defect Classification')
+        self.geometry("800x600")
+        self.configure(background='#434547')  # Set the main window background
+        
+        # Custom styles for ttk widgets
+        self.style = ttk.Style(self)
+        self.style.configure('TLabel', font=('Arial', 12), foreground='#FFFFFF')
+        self.style.configure('TButton', font=('Arial', 12), background='#5C5F63', foreground='#FFFFFF')
+        self.initialize_ui()
+        
+    def initialize_ui(self):
+        self.clear_widgets()
+        self.auth_frame = tk.Frame(self, background='#434547')  # Using tk.Frame to allow background color
+        self.auth_frame.pack(padx=10, pady=10, fill='x', expand=True)
+        
+        # ttk widgets like labels and buttons will inherit the style specified but won't directly change their background
+        self.password_label = ttk.Label(self.auth_frame, text="Enter Password:")
+        self.password_label.pack(side='left')
+        
+        self.password_entry = ttk.Entry(self.auth_frame)  # Entry widget doesn't support ttk in standard Tkinter
+        self.password_entry.pack(side='left', padx=10)
+        
+        self.login_button = ttk.Button(self.auth_frame, text="Login", command=self.authenticate)
+        self.login_button.pack(side='left')
+
+
+    def authenticate(self):
+        password = self.password_entry.get()
+        self.isAdmin = False
+        if password == "user":
+            self.user_interface()
+        elif password == "admin":
+            self.isAdmin = True
+            self.admin_interface()
+        else:
+            messagebox.showerror("Error", "Incorrect Password")
+
+    def user_interface(self):
+        self.clear_widgets()
+        main_frame = tk.Frame(self, background='#434547')  # Using tk.Frame to allow background color
+        main_frame.pack(padx=10, pady=10, fill='both', expand=True)
+        
+        self.upload_button = ttk.Button(main_frame, text="Upload and Classify Folder", command=self.upload_folder)
+        self.upload_button.pack()
+
+        self.back_button = ttk.Button(main_frame, text="Go Back", command=self.initialize_ui)
+        self.back_button.pack(pady=10)
+
+
+    def admin_interface(self):
+        self.user_interface()  # Admins can do everything a user can
+
+    def upload_folder(self):
+        folder_path = filedialog.askdirectory()
+        if folder_path:
+            classifications = []
+            for img_name in os.listdir(folder_path):
+                img_path = os.path.join(folder_path, img_name)
+                if img_path.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')):  # Filter for image files
+                    image = cv2.imread(img_path)
+                    image = cv2.resize(image, (224, 224))
+                    image = preprocess_input(image)
+                    image = np.expand_dims(image, axis=0)
+                    
+                    predictions = model1.predict(image)
+                    predicted_class = np.argmax(predictions)
+                    categories = ['Cr', 'In', 'Pa', 'PS', 'RS', 'Sc']
+                    predicted_category = categories[predicted_class]
+                    
+                    classifications.append(f"{img_name}: {predicted_category}")
+            
+            self.display_results(classifications)
+
+    def display_results(self, classifications):
+        results_window = tk.Toplevel(self)
+        results_window.title("Classification Results")
+        results_window.geometry("600x400")
+        
+        text_area = tk.Text(results_window)
+        text_area.pack(side='left', fill='both', expand=True)
+        
+        for classification in classifications:
+            text_area.insert(tk.END, classification + "\n")
+        
+        if self.isAdmin:  # Show detailed analytics for admins only
+            self.show_pie_chart(classifications, results_window)
+
+    def show_pie_chart(self, classifications, parent_window):
+        counts = Counter([x.split(': ')[1] for x in classifications])
+        categories = list(counts.keys())
+        sizes = list(counts.values())
+        
+        fig, ax = plt.subplots()
+        ax.pie(sizes, labels=categories, autopct='%1.1f%%', startangle=90, colors=plt.cm.tab20.colors)
+        ax.axis('equal')  # Equal aspect ratio ensures the pie is drawn as a circle.
+        
+        canvas = FigureCanvasTkAgg(fig, master=parent_window)  # A tk.DrawingArea.
+        canvas.draw()
+        canvas.get_tk_widget().pack(side='right', fill='both', expand=True)
+
+    def clear_widgets(self):
+        for widget in self.winfo_children():
+            widget.destroy()
+
+if __name__ == "__main__":
+    app = Application()
+    app.mainloop()
+>>>>>>> Stashed changes
