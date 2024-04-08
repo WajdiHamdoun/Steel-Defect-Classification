@@ -292,16 +292,34 @@ for img_name, predicted_label in zip(os.listdir(test_folder), predicted_labels):
 
 #import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
+import numpy as np
+import cv2
+import os
+from tensorflow.keras.applications import VGG19
+from tensorflow.keras import layers, models
+from tensorflow.keras.applications.vgg19 import preprocess_input
 import tkinter as tk
 import numpy as np
 import cv2
 import os
 from PIL import Image, ImageTk
+from tensorflow.keras import layers, models
 from collections import Counter
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import urllib.request
 
 # Assuming you have defined the model and other necessary imports
+base_model1 = VGG19(weights=None, include_top=False, input_shape=(224, 224, 3))
+for layer in base_model1.layers:
+    layer.trainable = False
+model1 = models.Sequential([
+    base_model1,
+    layers.Flatten(),
+    layers.Dense(256, activation='relu'),
+    layers.Dropout(0.5),
+    layers.Dense(6, activation='softmax')
+])
+_ = model1(np.random.random((1, 224, 224, 3)))
 model1.load_weights('VGG.weights.h5')
 class Application(tk.Tk):
     # Define constants for paragraphs of each defect
