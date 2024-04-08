@@ -302,6 +302,7 @@ import tkinter as tk
 import numpy as np
 import cv2
 import os
+import shutil
 from PIL import Image, ImageTk
 from tensorflow.keras import layers, models
 from collections import Counter
@@ -509,11 +510,13 @@ class Application(tk.Tk):
         for img_name in os.listdir(folder_path):
             img_path = os.path.join(folder_path, img_name)
             if img_path.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')):  # Filter for image files
+                # Charger l'image sans aucun traitement
                 image = cv2.imread(img_path)
+                
+                # Get the predicted class
                 image = cv2.resize(image, (224, 224))
                 image = preprocess_input(image)
                 image = np.expand_dims(image, axis=0)
-
                 predictions = model1.predict(image)
                 predicted_class = np.argmax(predictions)
                 categories = {0: 'Cr', 1: 'In', 2: 'Pa', 3: 'PS', 4: 'RS', 5: 'Sc'}  # Utilisation directe de l'indice prédit
@@ -523,8 +526,8 @@ class Application(tk.Tk):
                 defect_folder = os.path.join(save_path, f"{predicted_category}_images")
                 os.makedirs(defect_folder, exist_ok=True)
 
-                # Enregistrer l'image dans le dossier de défaut correspondant
-                cv2.imwrite(os.path.join(defect_folder, img_name), image[0])
+                # Enregistrer l'image dans le dossier de défaut correspondant sans aucun traitement
+                shutil.copy(img_path, os.path.join(defect_folder, img_name))
 
                 # Enregistrer le paragraphe dans un fichier
                 paragraph_text = self.PARAGRAPHS.get(predicted_category, "Paragraph not found.")
@@ -538,6 +541,7 @@ class Application(tk.Tk):
         # Afficher les dossiers de classification dans une nouvelle fenêtre
         select_folder_window = SelectDefectFolderWindow(self, save_path)
         select_folder_window.mainloop()
+
            
     def display_results(self, classifications):
         results_window = tk.Toplevel(self)
