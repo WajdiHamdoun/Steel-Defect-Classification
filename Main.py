@@ -75,7 +75,7 @@ print("Number of images in augmented dataset:", num_images)
 
 
 
-
+#VGG
 import os
 import cv2
 import numpy as np
@@ -298,17 +298,17 @@ class Application(tk.Tk):
         super().__init__()
         self.title('Steel Defect Classification')
         self.geometry("800x600")
-        self.configure(background='#434547')  # Set the main window background
+        self.configure(background='#ECECD1')  # Set the main window background
         
         # Custom styles for ttk widgets
         self.style = ttk.Style(self)
-        self.style.configure('TLabel', font=('Arial', 12), foreground='#FFFFFF')
-        self.style.configure('TButton', font=('Arial', 12), background='#5C5F63', foreground='#FFFFFF')
+        self.style.configure('TLabel', font=('Arial', 12), background='#5C5F63', foreground='#282819')
+        self.style.configure('TButton', font=('Arial', 12), background='#5C5F63', foreground='#282819')
         self.initialize_ui()
         
     def initialize_ui(self):
         self.clear_widgets()
-        self.auth_frame = tk.Frame(self, background='#434547')  # Using tk.Frame to allow background color
+        self.auth_frame = tk.Frame(self, background='#9C9C56')  # Using tk.Frame to allow background color
         self.auth_frame.pack(padx=10, pady=10, fill='x', expand=True)
         
         # ttk widgets like labels and buttons will inherit the style specified but won't directly change their background
