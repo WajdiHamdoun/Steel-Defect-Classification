@@ -402,32 +402,13 @@ class Application(tk.Tk):
             background_label.place(relwidth=1, relheight=1)
         except Exception as e:
             print("Failed to load background image:", e)
-
-        # Create a dropdown menu for defect classification
-        defect_label = ttk.Label(main_frame, text="Select Defect Type:")
-        defect_label.pack()
-
-        defect_options = ['Rolling Scale', 'Plaque', 'Pitting Surface ', 'Inclusions', 'Scratches']
-        self.defect_var = tk.StringVar()
-        self.defect_var.set(defect_options[0])  # Set default value
-        defect_dropdown = ttk.OptionMenu(main_frame, self.defect_var, *defect_options)
-        defect_dropdown.pack()
         
-        # Text area for admin to provide paragraphs for each defect
-        paragraph_label = ttk.Label(main_frame, text="Paragraph for the Selected Defect:")
-        paragraph_label.pack()
-
-        selected_defect = self.defect_var.get()
-        paragraph_text = self.PARAGRAPHS.get(selected_defect, "Paragraph not found.")
-        paragraph_display = tk.Text(main_frame, height=10)
-        paragraph_display.insert(tk.END, paragraph_text)
-        paragraph_display.config(state=tk.DISABLED)  # Make text area read-only
-        paragraph_display.pack()
+        
 
         # Button to submit defect classification and paragraph
         submit_button = ttk.Button(main_frame, text="Submit", command=self.submit_defect_classification)
         submit_button.pack()
-
+        
         # Button to go back
         self.back_button = ttk.Button(main_frame, text="Go Back", command=self.initialize_ui)
         self.back_button.pack(pady=10)
@@ -442,37 +423,47 @@ class Application(tk.Tk):
 
     def submit_defect_classification(self):
         selected_defect = self.defect_var.get()
-        paragraph = self.paragraph_entry.get("1.0", tk.END)  # Get the paragraph from the text area
+        paragraph_text = self.PARAGRAPHS.get(selected_defect, "Paragraph not found.")  # Get the paragraph from the dictionary
 
-        # Save the paragraph to a file
+    # Save the paragraph to a file
         with open(f"{selected_defect}_paragraph.txt", "w") as file:
-            file.write(paragraph)
+         file.write(paragraph_text)
 
         # Classify images from the folder provided by the admin
-        folder_path = filedialog.askdirectory()
-        if folder_path:
-            for img_name in os.listdir(folder_path):
-                img_path = os.path.join(folder_path, img_name)
-                if img_path.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')):  # Filter for image files
-                    image = cv2.imread(img_path)
-                    image = cv2.resize(image, (224, 224))
-                    image = preprocess_input(image)
-                    image = np.expand_dims(image, axis=0)
+    def submit_defect_classification(self):
+     folder_path = filedialog.askdirectory()
+     if folder_path:
+        for img_name in os.listdir(folder_path):
+            img_path = os.path.join(folder_path, img_name)
+            if img_path.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')):  # Filter for image files
+                image = cv2.imread(img_path)
+                image = cv2.resize(image, (224, 224))
+                image = preprocess_input(image)
+                image = np.expand_dims(image, axis=0)
 
-                    predictions = model1.predict(image)
-                    predicted_class = np.argmax(predictions)
-                    categories = ['Cr', 'In', 'Pa', 'PS', 'RS', 'Sc']
-                    predicted_category = categories[predicted_class]
+                predictions = model1.predict(image)
+                predicted_class = np.argmax(predictions)
+                categories = {0: 'Cr', 1: 'In', 2: 'Pa', 3: 'PS', 4: 'RS', 5: 'Sc'}  # Utilisation directe de l'indice prédit
+                predicted_category = categories.get(predicted_class, 'Unknown')
 
-                    # Create a folder for each defect type if it doesn't exist
-                    defect_folder = f"{selected_defect}_images"
-                    os.makedirs(defect_folder, exist_ok=True)
+                # Créer un dossier pour chaque type de défaut s'il n'existe pas
+                defect_folder = f"{predicted_category}_images"
+                os.makedirs(defect_folder, exist_ok=True)
 
-                    # Save the image to the corresponding defect folder
-                    cv2.imwrite(os.path.join(defect_folder, img_name), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+                # Enregistrer l'image dans le dossier de défaut correspondant
+                cv2.imwrite(os.path.join(defect_folder, img_name), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
 
-        # Show a confirmation message
-        messagebox.showinfo("Success", f"Defect '{selected_defect}' classified successfully!\nParagraph saved to '{selected_defect}_paragraph.txt'")
+                # Enregistrer le paragraphe dans un fichier
+                paragraph_text = self.PARAGRAPHS.get(predicted_category, "Paragraph not found.")
+                with open(f"{defect_folder}/{predicted_category}_paragraph.txt", "w") as file:
+                    file.write(paragraph_text)
+
+    # Afficher un message de confirmation
+    messagebox.showinfo("Success", "Images classified and folders created successfully!")
+
+    # Show a confirmation message
+    messagebox.showinfo("Success", "Images classified and folders created successfully!")
+
 
     def display_results(self, classifications):
         results_window = tk.Toplevel(self)
