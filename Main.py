@@ -321,6 +321,42 @@ model1 = models.Sequential([
 ])
 _ = model1(np.random.random((1, 224, 224, 3)))
 model1.load_weights('VGG.weights.h5')
+class SelectDefectFolderWindow(tk.Toplevel):
+    def __init__(self, parent, save_path):
+        super().__init__(parent)
+        self.title("Select Defect Folder")
+        self.geometry("400x300")
+        
+        self.save_path = save_path
+        
+        # Créer un cadre pour afficher la liste des dossiers
+        self.folder_frame = tk.Frame(self)
+        self.folder_frame.pack(padx=10, pady=10, fill='both', expand=True)
+        
+        # Ajouter une liste déroulante pour sélectionner un dossier
+        self.folder_var = tk.StringVar()
+        self.folder_var.set("")  # Valeur par défaut
+        
+        self.folder_list = ttk.Combobox(self.folder_frame, textvariable=self.folder_var, state='readonly')
+        self.folder_list.pack(padx=10, pady=5, fill='x')
+        
+        # Ajouter un bouton pour ouvrir le dossier sélectionné
+        open_button = ttk.Button(self.folder_frame, text="Open Selected Folder", command=self.open_selected_folder)
+        open_button.pack(padx=10, pady=5)
+        
+        # Récupérer la liste des dossiers dans save_path
+        self.folder_list['values'] = [f.name for f in os.scandir(self.save_path) if f.is_dir()]
+        
+    def open_selected_folder(self):
+        selected_folder = self.folder_var.get()
+        if selected_folder:
+            folder_path = os.path.join(self.save_path, selected_folder)
+            if os.path.exists(folder_path):
+                os.startfile(folder_path)
+            else:
+                messagebox.showerror("Error", "Selected folder does not exist.")
+        else:
+            messagebox.showerror("Error", "Please select a folder.")
 class Application(tk.Tk):
     # Define constants for paragraphs of each defect
     PARAGRAPHS = {
@@ -424,33 +460,33 @@ class Application(tk.Tk):
 
 
     def admin_interface(self):
-        self.clear_widgets()
-        main_frame = tk.Frame(self, background='#434547')  # Using tk.Frame to allow background color
-        main_frame.pack(padx=10, pady=10, fill='both', expand=True)
+     self.clear_widgets()
+     main_frame = tk.Frame(self, background='#434547')  # Utilisation de tk.Frame pour autoriser la couleur de fond
+     main_frame.pack(padx=10, pady=10, fill='both', expand=True)
+     save_path = "C:\\Users\\wajdi\\Desktop\\outputs"
 
-        # Add background picture
-        try:
-            # Load the image from a local file
-            image_path = "wall.jpg"  # Specify the correct file path
-            pil_image = Image.open(image_path)
-            width, height = self.winfo_screenwidth(), self.winfo_screenheight()
-            pil_image = pil_image.resize((width, height))
-            tk_image = ImageTk.PhotoImage(pil_image)
-            background_label = tk.Label(main_frame, image=tk_image)
-            background_label.image = tk_image  # Keep a reference to prevent garbage collection
-            background_label.place(relwidth=1, relheight=1)
-        except Exception as e:
-            print("Failed to load background image:", e)
-        
-        
+    # Add background picture
+     try:
+        # Charger l'image depuis un fichier local
+        image_path = "wall.jpg"  # Spécifiez le chemin du fichier correct
+        pil_image = Image.open(image_path)
+        width, height = self.winfo_screenwidth(), self.winfo_screenheight()
+        pil_image = pil_image.resize((width, height))
+        tk_image = ImageTk.PhotoImage(pil_image)
+        background_label = tk.Label(main_frame, image=tk_image)
+        background_label.image = tk_image  # Conserver une référence pour éviter la collecte des déchets
+        background_label.place(relwidth=1, relheight=1)
+     except Exception as e:
+        print("Impossible de charger l'image de fond:", e)
+
 
         # Button to submit defect classification and paragraph
-        submit_button = ttk.Button(main_frame, text="Select input images", command=self.submit_defect_classification)
-        submit_button.pack()
+     submit_button = ttk.Button(main_frame, text="Select input images", command=self.submit_defect_classification)
+     submit_button.pack()
         
         # Button to go back
-        self.back_button = ttk.Button(main_frame, text="Go Back", command=self.initialize_ui)
-        self.back_button.pack(pady=10)
+     self.back_button = ttk.Button(main_frame, text="Go Back", command=self.initialize_ui)
+     self.back_button.pack(pady=10)
         
     def select_input_folder(self):
         folder_path = filedialog.askdirectory()
@@ -494,9 +530,14 @@ class Application(tk.Tk):
                 paragraph_text = self.PARAGRAPHS.get(predicted_category, "Paragraph not found.")
                 with open(f"{defect_folder}/{predicted_category}_paragraph.txt", "w") as file:
                     file.write(paragraph_text)
-
-    # Afficher un message de confirmation
-    messagebox.showinfo("Success", "Images classified and folders created successfully!")
+        # Afficher un message de confirmation
+        messagebox.showinfo("Success", "Images classified and folders created successfully!")
+        # Récupérer la liste des dossiers de classification
+        classification_folders = [f.path for f in os.scandir(save_path) if f.is_dir()]
+        
+        # Afficher les dossiers de classification dans une nouvelle fenêtre
+        select_folder_window = SelectDefectFolderWindow(self, save_path)
+        select_folder_window.mainloop()
            
     def display_results(self, classifications):
         results_window = tk.Toplevel(self)
