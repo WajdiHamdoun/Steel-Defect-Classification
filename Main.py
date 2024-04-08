@@ -264,6 +264,12 @@ for img_name, predicted_label in zip(os.listdir(test_folder), predicted_labels):
 
 
 
+
+
+
+
+
+
 #interface
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
@@ -276,7 +282,7 @@ from collections import Counter
 from tensorflow.keras.applications import VGG19
 from tensorflow.keras import layers, models
 from tensorflow.keras.applications.vgg19 import preprocess_input
-
+from PIL import Image, ImageTk
 #loading the model
 base_model1 = VGG19(weights=None, include_top=False, input_shape=(224, 224, 3))
 for layer in base_model1.layers:
@@ -298,28 +304,57 @@ class Application(tk.Tk):
         super().__init__()
         self.title('Steel Defect Classification')
         self.geometry("800x600")
-        self.configure(background='#ECECD1')  # Set the main window background
-        
+        self.configure(background='#ECECD1')
+
         # Custom styles for ttk widgets
         self.style = ttk.Style(self)
         self.style.configure('TLabel', font=('Arial', 12), background='#5C5F63', foreground='#282819')
         self.style.configure('TButton', font=('Arial', 12), background='#5C5F63', foreground='#282819')
+
+        # Load and store the image
+        image_path = "C:/Users/pc/Documents/GitHub/PCD/login1.png"
+        self.login_image = Image.open(image_path)
+        self.login_photo = ImageTk.PhotoImage(self.login_image.resize((250, 250), Image.Resampling.LANCZOS))
+
+        # Initialize the UI
         self.initialize_ui()
-        
+
+
     def initialize_ui(self):
         self.clear_widgets()
-        self.auth_frame = tk.Frame(self, background='#9C9C56')  # Using tk.Frame to allow background color
-        self.auth_frame.pack(padx=10, pady=10, fill='x', expand=True)
-        
-        # ttk widgets like labels and buttons will inherit the style specified but won't directly change their background
-        self.password_label = ttk.Label(self.auth_frame, text="Enter Password:")
-        self.password_label.pack(side='left')
-        
-        self.password_entry = ttk.Entry(self.auth_frame)  # Entry widget doesn't support ttk in standard Tkinter
-        self.password_entry.pack(side='left', padx=10)
-        
-        self.login_button = ttk.Button(self.auth_frame, text="Login", command=self.authenticate)
-        self.login_button.pack(side='left')
+        background_color = '#1F1F1F'
+        self.configure(background=background_color)
+        self.auth_frame = tk.Frame(self, bg=background_color)
+        self.auth_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+        # Define the style for entry widgets
+        entry_style = {'font': ('Arial', 12), 'bg': '#333333', 'fg': 'white'}
+        # Define the style for the login button
+        login_button_style = {'font': ('Arial', 12), 'bg': '#4F4F4F', 'fg': '#FFFFFF'}
+        # Add the image illustration
+        self.image_label = tk.Label(self.auth_frame, image=self.login_photo, bg=background_color)
+        self.image_label.grid(row=0, column=0, columnspan=2, pady=(10, 20))
+
+        # Use the entry_style in the Entry widgets
+        self.username_entry = tk.Entry(self.auth_frame, **entry_style)
+        self.username_entry.grid(row=1, column=0, columnspan=2, padx=20, pady=10, sticky='ew')
+
+        self.password_entry = tk.Entry(self.auth_frame, show="*", **entry_style)
+        self.password_entry.grid(row=2, column=0, columnspan=2, padx=20, pady=10, sticky='ew')
+
+        # Login button
+        self.login_button = tk.Button(self.auth_frame, text="Login", command=self.authenticate, **login_button_style)
+        self.login_button.grid(row=3, column=0, columnspan=2, padx=20, pady=(10, 20), sticky='ew')
+
+        # Forgot Password and Sign Up texts
+        self.forgot_password_label = tk.Label(self.auth_frame, text="Forgot Password?", fg="white", bg=background_color)
+        self.forgot_password_label.grid(row=4, column=0, padx=20, sticky='w')
+
+        self.sign_up_label = tk.Label(self.auth_frame, text="Sign Up", fg="white", bg=background_color)
+        self.sign_up_label.grid(row=4, column=1, padx=20, sticky='e')
+
+        self.auth_frame.grid_columnconfigure(0, weight=1)
+        self.auth_frame.grid_columnconfigure(1, weight=1)
+
 
 
     def authenticate(self):
@@ -403,3 +438,17 @@ class Application(tk.Tk):
 if __name__ == "__main__":
     app = Application()
     app.mainloop()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
