@@ -400,6 +400,19 @@ class Application(tk.Tk):
 
     def user_interface(self):
         self.clear_widgets()
+        try:
+            # Load the image from a local file
+            image_path = "wall.jpg"  # Specify the correct file path
+            pil_image = Image.open(image_path)
+            width, height = self.winfo_screenwidth(), self.winfo_screenheight()
+            pil_image = pil_image.resize((width, height))
+            tk_image = ImageTk.PhotoImage(pil_image)
+            background_label = tk.Label(main_frame, image=tk_image)
+            background_label.image = tk_image  # Keep a reference to prevent garbage collection
+            background_label.place(relwidth=1, relheight=1)
+        except Exception as e:
+            print("Failed to load background image:", e)
+
         main_frame = tk.Frame(self, background='#434547')  # Using tk.Frame to allow background color
         main_frame.pack(padx=10, pady=10, fill='both', expand=True)
         
@@ -432,16 +445,13 @@ class Application(tk.Tk):
         
 
         # Button to submit defect classification and paragraph
-        submit_button = ttk.Button(main_frame, text="Submit", command=self.submit_defect_classification)
+        submit_button = ttk.Button(main_frame, text="Select input images", command=self.submit_defect_classification)
         submit_button.pack()
         
         # Button to go back
         self.back_button = ttk.Button(main_frame, text="Go Back", command=self.initialize_ui)
         self.back_button.pack(pady=10)
-        # Button to select the input folder
-        select_folder_button = ttk.Button(main_frame, text="Select Input Image Folder", command=self.select_input_folder)
-        select_folder_button.pack()
-
+        
     def select_input_folder(self):
         folder_path = filedialog.askdirectory()
         if folder_path:
@@ -478,7 +488,7 @@ class Application(tk.Tk):
                 os.makedirs(defect_folder, exist_ok=True)
 
                 # Enregistrer l'image dans le dossier de défaut correspondant
-                cv2.imwrite(os.path.join(defect_folder, img_name), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+                cv2.imwrite(os.path.join(defect_folder, img_name), image[0])
 
                 # Enregistrer le paragraphe dans un fichier
                 paragraph_text = self.PARAGRAPHS.get(predicted_category, "Paragraph not found.")
