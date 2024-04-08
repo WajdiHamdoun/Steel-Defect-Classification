@@ -415,7 +415,7 @@ class Application(tk.Tk):
         # Forgot Password and Sign Up texts
         self.forgot_password_label = tk.Label(self.auth_frame, text="Forgot Password?", fg="white", bg=background_color)
         self.forgot_password_label.grid(row=4, column=0, padx=20, sticky='w')
-
+        self.password_entry.bind('<Return>', lambda event: self.authenticate())
         self.sign_up_label = tk.Label(self.auth_frame, text="Sign Up", fg="white", bg=background_color)
         self.sign_up_label.grid(row=4, column=1, padx=20, sticky='e')
 
