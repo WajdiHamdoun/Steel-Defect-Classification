@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
-Datadir = "C:/Users/pc/Desktop/NEU surface defect database"
+Datadir = "C:\\Users\\wajdi\\Desktop\\images"
 target_size = (200, 200) 
 augmented_data = []
 
@@ -52,14 +52,15 @@ fig, axes = plt.subplots(5, 3, figsize=(12, 8))
 for i, ax in enumerate(axes.flatten()):
     ax.imshow(cv2.cvtColor(augmented_data[i], cv2.COLOR_BGR2RGB))
     ax.axis('off')
-    if i % 3 == 0 :
-        ax.set_title(f'Original Image {(i//3)+1}')
-    elif i % 2 == 0:
-        ax.set_title(f'Rotated Image horizontal {(i//3)+1}')
-    else :
-        ax.set_title(f'Rotated Image vertical {(i//3)+1}')
+    if i % 4 == 0:
+        ax.set_title(f'Original Image {(i//4)+1}')
+    elif i % 4 == 1:
+        ax.set_title(f'Rotated Image horizontal {(i//4)+1}')
+    elif i % 4 == 2:
+        ax.set_title(f'Rotated Image vertical {(i//4)+1}')
+    else:
+        ax.set_title(f'Thresholded Image {(i//4)+1}')
 plt.show()
-
 num_images = len(augmented_data)
 print("Number of images in augmented dataset:", num_images)
 
