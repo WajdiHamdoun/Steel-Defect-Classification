@@ -284,9 +284,6 @@ for img_name, predicted_label in zip(os.listdir(test_folder), predicted_labels):
 
 
 
-
-
-
 #interface
 from tkinter import filedialog, messagebox, ttk
 import numpy as np
@@ -304,6 +301,7 @@ from tensorflow.keras import layers, models
 from collections import Counter
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import urllib.request
+import shutil
 
 # Assuming you have defined the model and other necessary imports
 base_model1 = VGG19(weights=None, include_top=False, input_shape=(224, 224, 3))
@@ -547,7 +545,8 @@ class Application(tk.Tk):
                 os.makedirs(defect_folder, exist_ok=True)
 
                 # Enregistrer l'image dans le dossier de défaut correspondant
-                cv2.imwrite(os.path.join(defect_folder, img_name), image[0])
+                shutil.copy(img_path, os.path.join(defect_folder, img_name))
+
 
                 # Enregistrer le paragraphe dans un fichier
                 paragraph_text = self.PARAGRAPHS.get(predicted_category, "Paragraph not found.")
@@ -569,3 +568,4 @@ class Application(tk.Tk):
 if __name__ == "__main__":
     app = Application()
     app.mainloop()
+
