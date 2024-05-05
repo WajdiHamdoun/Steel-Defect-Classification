@@ -355,15 +355,20 @@ class SelectDefectFolderWindow(tk.Toplevel):
 class Application(tk.Tk):
     # Define constants for paragraphs of each defect
     PARAGRAPHS = {
-        'Cr': "A crack is a line on the surface of something along which it has split without breaking apart.",
-        'In': "Incomplete penetration occurs when the weld metal does not extend into the root of the weld joint.",
-        'Pa': "Porosity is the presence of small voids or cavities in the weld metal caused by gas entrapment during solidification.",
-        'PS': "Puddle spatter is small particles of molten metal expelled during welding.",
-        'RS': "Root smutting is the presence of sooty deposits or contamination at the root of the weld joint.",
-        'Sc': "Slag is the non-metallic byproduct of the welding process that forms a layer on the surface of the weld bead."
-    }
-
+        }
+    def load_defect_descriptions(self):
+        # Load from a persistent storage or use static if not available
+        return {
+            'Cr': "A crack is a line on the surface of something along which it has split without breaking apart.",
+            'In': "Incomplete penetration occurs when the weld metal does not extend into the root of the weld joint.",
+            'Pa': "Porosity is the presence of small voids or cavities in the weld metal caused by gas entrapment during solidification.",
+            'PS': "Puddle spatter is small particles of molten metal expelled during welding.",
+            'RS': "Root smutting is the presence of sooty deposits or contamination at the root of the weld joint.",
+            'Sc': "Slag is the non-metallic byproduct of the welding process that forms a layer on the surface of the weld bead."
+    
+        }
     def __init__(self):
+        self.PARAGRAPHS = self.load_defect_descriptions()
         super().__init__()
         self.title('Steel Defect Classification')
         self.geometry("800x600")
@@ -508,7 +513,28 @@ class Application(tk.Tk):
             # Button to go back
         self.back_button = ttk.Button(main_frame, text="Go Back", command=self.initialize_ui)
         self.back_button.pack(pady=10)
+        add_defect_button = ttk.Button(self, text="Add Defect Type", command=self.add_defect_type)
+        add_defect_button.pack()
+        remove_defect_button = ttk.Button(self, text="Remove Defect Type", command=self.remove_defect_type)
+        remove_defect_button.pack()
         
+    def add_defect_type(self):
+        # Code to add defect type
+        new_type = "New Type"
+        new_description = "New Description"
+        if new_type not in self.PARAGRAPHS:
+            self.PARAGRAPHS[new_type] = new_description
+            self.update_defect_descriptions()
+            messagebox.showinfo("Success", "Defect type added.")
+            
+    def remove_defect_type(self):
+        # Code to remove defect type
+        type_to_remove = "Type to Remove"
+        if type_to_remove in self.PARAGRAPHS:
+            del self.PARAGRAPHS[type_to_remove]
+            self.update_defect_descriptions()
+            messagebox.showinfo("Success", "Defect type removed.")
+                    
     def select_input_folder(self):
         folder_path = filedialog.askdirectory()
         if folder_path:
