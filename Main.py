@@ -67,17 +67,7 @@ print("Number of images in augmented dataset:", num_images)
 
 
 
-
-
-
-
-
-
-
-
-
-
-
+#Model_Training
 import os
 import cv2
 import numpy as np
@@ -206,8 +196,141 @@ model.save_weights("VGG.weights.h5")
 
 
 
+# preproc
 
-#interface
+import os
+import cv2
+import numpy as np
+from matplotlib import pyplot as plt
+
+Datadir = "C:/Users/pc/Desktop/Data"
+target_size = (200, 200) 
+augmented_data = []
+
+# Loop through each image in the dataset directory
+for img_name in os.listdir(Datadir):
+    img_path = os.path.join(Datadir, img_name)
+    
+    # Read the image with error handling (Thumbs.db inexistant pour le mm)
+    img = cv2.imread(img_path)
+    if img is None:
+        print(f"Error reading image: {img_path}")
+        continue
+    
+    # Resize the image to the target size (to be adaptive for any input)
+    img = cv2.resize(img, target_size)
+    
+    # Increase contrast of the image
+    alpha = 1.0  # Contrast control (1.0-3.0)
+    beta = 0  # Brightness control (0-100)
+    enhanced_img = cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
+        
+    # Convert the image to grayscale (to be adaptive for any input)
+    gray_img = cv2.cvtColor(enhanced_img, cv2.COLOR_BGR2GRAY)
+        
+    # Apply adaptive thresholding
+    thresh_img = cv2.adaptiveThreshold(gray_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 101, 5)
+        
+    # Flip the image horizontally
+    flipped_img_horizontal = cv2.flip(enhanced_img, 1)
+    
+    # Flip the image vertically
+    flipped_img_vertical = cv2.flip(enhanced_img, 0)
+    
+    # Append original image, flipped images, and thresholded image to the list
+    augmented_data.extend([enhanced_img, flipped_img_horizontal, flipped_img_vertical])
+
+# Convert the list to a numpy array
+augmented_data = np.array(augmented_data)
+
+# Display some of the augmented images
+fig, axes = plt.subplots(3, 3, figsize=(24, 16))
+for i, ax in enumerate(axes.flatten()):
+    ax.imshow(cv2.cvtColor(augmented_data[i], cv2.COLOR_BGR2RGB))
+    ax.axis('off')
+    if i % 3 == 0 :
+        ax.set_title(f'Original Image {(i//3)+1}')
+    elif i % 2 == 0:
+        ax.set_title(f'Rotated Image horizontal {(i//3)+1}')
+    else :
+        ax.set_title(f'Rotated Image vertical {(i//3)+1}')
+plt.show()
+
+num_images = len(augmented_data)
+print("Number of images in augmented dataset:", num_images)
+
+
+# main
+
+import os
+import cv2
+import numpy as np
+from matplotlib import pyplot as plt
+
+Datadir = "C:/Users/pc/Desktop/Data"
+target_size = (200, 200) 
+augmented_data = []
+
+# Loop through each image in the dataset directory
+for img_name in os.listdir(Datadir):
+    img_path = os.path.join(Datadir, img_name)
+    
+    # Read the image with error handling (Thumbs.db inexistant pour le mm)
+    img = cv2.imread(img_path)
+    if img is None:
+        print(f"Error reading image: {img_path}")
+        continue
+    
+    # Resize the image to the target size (to be adaptive for any input)
+    img = cv2.resize(img, target_size)
+    
+    # Increase contrast of the image
+    alpha = 1.0  # Contrast control (1.0-3.0)
+    beta = 0  # Brightness control (0-100)
+    enhanced_img = cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
+        
+    # Convert the image to grayscale (to be adaptive for any input)
+    gray_img = cv2.cvtColor(enhanced_img, cv2.COLOR_BGR2GRAY)
+        
+    # Apply adaptive thresholding
+    thresh_img = cv2.adaptiveThreshold(gray_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 101, 5)
+        
+    # Flip the image horizontally
+    # flipped_img_horizontal = cv2.flip(enhanced_img, 1)
+    
+    # Flip the image vertically
+    # flipped_img_vertical = cv2.flip(enhanced_img, 0)
+    
+    # Append original image, flipped images, and thresholded image to the list
+    augmented_data.extend([gray_img, thresh_img])
+
+# Convert the list to a numpy array
+augmented_data = np.array(augmented_data)
+
+# Display some of the augmented images
+fig, axes = plt.subplots(3, 2, figsize=(24, 16))
+for i, ax in enumerate(axes.flatten()):
+    ax.imshow(cv2.cvtColor(augmented_data[i], cv2.COLOR_BGR2RGB))
+    ax.axis('off')
+    if i % 2 == 0 :
+        ax.set_title(f'Original Image {((i+1)//2)+1}')
+    else :
+        ax.set_title(f'Thresholded Image {((i+1)//2)}')
+plt.show()
+
+num_images = len(augmented_data)
+print("Number of images in augmented dataset:", num_images)
+
+
+
+
+
+
+
+
+
+
+# interface
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from PIL import Image, ImageTk
@@ -215,24 +338,32 @@ import numpy as np
 import cv2
 import os
 from tensorflow.keras.applications import VGG19
-from tensorflow.keras import layers, models
+from tensorflow.keras import layers, models, optimizers, callbacks
 from tensorflow.keras.applications.vgg19 import preprocess_input
 import shutil
 import mysql.connector
 from mysql.connector import Error
 import bcrypt
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
 
 # Define the model
-base_model = VGG19(weights=None, include_top=False, input_shape=(224, 224, 3))
-for layer in base_model.layers:
-    layer.trainable = False
-model = models.Sequential([
-    base_model,
-    layers.Flatten(),
-    layers.Dense(256, activation='relu'),
-    layers.Dropout(0.5),
-    layers.Dense(6, activation='softmax')
-])
+def create_model(num_classes):
+    base_model = VGG19(weights=None, include_top=False, input_shape=(224, 224, 3))
+    for layer in base_model.layers:
+        layer.trainable = False
+    model = models.Sequential([
+        base_model,
+        layers.Flatten(),
+        layers.Dense(256, activation='relu'),
+        layers.Dropout(0.5),
+        layers.Dense(num_classes, activation='softmax')
+    ])
+    return model
+
+# Initial model creation with 6 classes
+model = create_model(6)
 model(np.random.random((1, 224, 224, 3)))
 model.load_weights('VGG.weights.h5')
 
@@ -440,6 +571,8 @@ class Application(tk.Tk):
         add_defect_button.pack()
         remove_defect_button = ttk.Button(self, text="Remove Defect Type", command=self.remove_defect_type_ui)
         remove_defect_button.pack()
+        retrain_button = ttk.Button(self, text="Retrain Model", command=self.retrain_model_ui)
+        retrain_button.pack()
 
     def create_interface(self, user_type):
         self.clear_widgets()
@@ -544,6 +677,109 @@ class Application(tk.Tk):
         messagebox.showinfo("Success", "Defect type removed.")
         self.admin_interface()
 
+    def retrain_model_ui(self):
+        self.clear_widgets()
+        background_color = '#1F1F1F'
+        self.configure(background=background_color)
+        self.retrain_frame = tk.Frame(self, bg=background_color)
+        self.retrain_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+
+        label_style = {'bg': background_color, 'fg': 'white', 'font': ('Arial', 12)}
+        button_style = {'font': ('Arial', 12), 'bg': '#4F4F4F', 'fg': '#FFFFFF'}
+
+        tk.Label(self.retrain_frame, text="Retrain Model", **label_style).grid(row=0, column=0, padx=20, pady=10, sticky='ew')
+        retrain_button = tk.Button(self.retrain_frame, text="Start Retraining", command=self.retrain_model, **button_style)
+        retrain_button.grid(row=1, column=0, padx=20, pady=(10, 20), sticky='ew')
+
+        back_button = tk.Button(self.retrain_frame, text="Back", command=self.admin_interface, **button_style)
+        back_button.grid(row=2, column=0, padx=20, pady=(10, 20), sticky='ew')
+
+    def retrain_model(self):
+        # Path to the dataset directory
+        Datadir = "C:/Users/pc/Desktop/NEU surface defect database"
+        target_size = (224, 224)
+        category_to_label = {k: i for i, k in enumerate(self.PARAGRAPHS.keys())}
+        augmented_data = []
+        augmented_labels = []
+
+        # Load and augment data
+        for img_name in os.listdir(Datadir):
+            img_path = os.path.join(Datadir, img_name)
+            img = cv2.imread(img_path)
+            if img is None:
+                print(f"Error reading image: {img_path}")
+                continue
+            img = cv2.resize(img, target_size)
+            category = img_name.split('_')[0]
+            if category in category_to_label:
+                augmented_data.append(img)
+                augmented_labels.append(category_to_label[category])
+                img_horizontal = cv2.flip(img, 1)
+                augmented_data.append(img_horizontal)
+                augmented_labels.append(category_to_label[category])
+                img_vertical = cv2.flip(img, 0)
+                augmented_data.append(img_vertical)
+                augmented_labels.append(category_to_label[category])
+            else:
+                print(f"Category '{category}' not found in category_to_label dictionary.")
+
+        # Convert lists to numpy arrays
+        augmented_data = np.array(augmented_data)
+        augmented_labels = np.array(augmented_labels)
+
+        # Split data into training, validation, and test sets
+        X_train, X_temp, y_train, y_temp = train_test_split(augmented_data, augmented_labels, test_size=0.3, random_state=20)
+        X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=20)
+
+        # Preprocess the data
+        X_train = preprocess_input(X_train)
+        X_val = preprocess_input(X_val)
+        X_test = preprocess_input(X_test)
+
+        num_classes = len(self.PARAGRAPHS)
+        model = create_model(num_classes)
+
+        # Compile the model
+        model.compile(optimizer=optimizers.Adam(learning_rate=0.0001),
+                      loss='sparse_categorical_crossentropy',
+                      metrics=['accuracy'])
+
+        # Train the model with early stopping
+        history = model.fit(X_train, y_train, epochs=15, batch_size=64, validation_data=(X_val, y_val), verbose=1,
+                            callbacks=[callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)])
+
+        # Evaluate the model on the test set
+        test_loss, test_acc = model.evaluate(X_test, y_test)
+        print('Test accuracy:', test_acc)
+
+        # Plot training & validation accuracy values
+        plt.plot(history.history['accuracy'])
+        plt.plot(history.history['val_accuracy'])
+        plt.title('Model accuracy')
+        plt.ylabel('Accuracy')
+        plt.xlabel('Epoch')
+        plt.legend(['Train', 'Validation'], loc='upper left')
+        plt.show()
+
+        # Plot training & validation loss values
+        plt.plot(history.history['loss'])
+        plt.plot(history.history['val_loss'])
+        plt.title('Model loss')
+        plt.ylabel('Loss')
+        plt.xlabel('Epoch')
+        plt.legend(['Train', 'Validation'], loc='upper left')
+        plt.show()
+
+        y_pred = np.argmax(model.predict(X_test), axis=-1)
+
+        # Calculate additional metrics
+        report = classification_report(y_test, y_pred)
+        print('Classification Report:\n', report)
+
+        # Save the retrained model
+        model.save_weights("VGG.weights.h5")
+        messagebox.showinfo("Success", "Model retrained and saved successfully.")
+
     def submit_defect_classification(self):
         save_path = "C:/Users/pc/Desktop/PCD/Output"
         folder_path = filedialog.askdirectory()
@@ -558,7 +794,7 @@ class Application(tk.Tk):
 
                     predictions = model.predict(image)
                     predicted_class = np.argmax(predictions)
-                    categories = {0: 'Cr', 1: 'In', 2: 'Pa', 3: 'PS', 4: 'RS', 5: 'Sc'}
+                    categories = {i: k for i, k in enumerate(self.PARAGRAPHS.keys())}
                     predicted_category = categories.get(predicted_class, 'Unknown')
 
                     defect_folder = os.path.join(save_path, f"{predicted_category}_images")
@@ -582,146 +818,3 @@ if __name__ == "__main__":
     app.mainloop()
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# preproc
-
-import os
-import cv2
-import numpy as np
-from matplotlib import pyplot as plt
-
-Datadir = "C:/Users/pc/Desktop/Data"
-target_size = (200, 200) 
-augmented_data = []
-
-# Loop through each image in the dataset directory
-for img_name in os.listdir(Datadir):
-    img_path = os.path.join(Datadir, img_name)
-    
-    # Read the image with error handling (Thumbs.db inexistant pour le mm)
-    img = cv2.imread(img_path)
-    if img is None:
-        print(f"Error reading image: {img_path}")
-        continue
-    
-    # Resize the image to the target size (to be adaptive for any input)
-    img = cv2.resize(img, target_size)
-    
-    # Increase contrast of the image
-    alpha = 1.0  # Contrast control (1.0-3.0)
-    beta = 0  # Brightness control (0-100)
-    enhanced_img = cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
-        
-    # Convert the image to grayscale (to be adaptive for any input)
-    gray_img = cv2.cvtColor(enhanced_img, cv2.COLOR_BGR2GRAY)
-        
-    # Apply adaptive thresholding
-    thresh_img = cv2.adaptiveThreshold(gray_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 101, 5)
-        
-    # Flip the image horizontally
-    flipped_img_horizontal = cv2.flip(enhanced_img, 1)
-    
-    # Flip the image vertically
-    flipped_img_vertical = cv2.flip(enhanced_img, 0)
-    
-    # Append original image, flipped images, and thresholded image to the list
-    augmented_data.extend([enhanced_img, flipped_img_horizontal, flipped_img_vertical])
-
-# Convert the list to a numpy array
-augmented_data = np.array(augmented_data)
-
-# Display some of the augmented images
-fig, axes = plt.subplots(3, 3, figsize=(24, 16))
-for i, ax in enumerate(axes.flatten()):
-    ax.imshow(cv2.cvtColor(augmented_data[i], cv2.COLOR_BGR2RGB))
-    ax.axis('off')
-    if i % 3 == 0 :
-        ax.set_title(f'Original Image {(i//3)+1}')
-    elif i % 2 == 0:
-        ax.set_title(f'Rotated Image horizontal {(i//3)+1}')
-    else :
-        ax.set_title(f'Rotated Image vertical {(i//3)+1}')
-plt.show()
-
-num_images = len(augmented_data)
-print("Number of images in augmented dataset:", num_images)
-
-
-# main
-
-import os
-import cv2
-import numpy as np
-from matplotlib import pyplot as plt
-
-Datadir = "C:/Users/pc/Desktop/Data"
-target_size = (200, 200) 
-augmented_data = []
-
-# Loop through each image in the dataset directory
-for img_name in os.listdir(Datadir):
-    img_path = os.path.join(Datadir, img_name)
-    
-    # Read the image with error handling (Thumbs.db inexistant pour le mm)
-    img = cv2.imread(img_path)
-    if img is None:
-        print(f"Error reading image: {img_path}")
-        continue
-    
-    # Resize the image to the target size (to be adaptive for any input)
-    img = cv2.resize(img, target_size)
-    
-    # Increase contrast of the image
-    alpha = 1.0  # Contrast control (1.0-3.0)
-    beta = 0  # Brightness control (0-100)
-    enhanced_img = cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
-        
-    # Convert the image to grayscale (to be adaptive for any input)
-    gray_img = cv2.cvtColor(enhanced_img, cv2.COLOR_BGR2GRAY)
-        
-    # Apply adaptive thresholding
-    thresh_img = cv2.adaptiveThreshold(gray_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 101, 5)
-        
-    # Flip the image horizontally
-    # flipped_img_horizontal = cv2.flip(enhanced_img, 1)
-    
-    # Flip the image vertically
-    # flipped_img_vertical = cv2.flip(enhanced_img, 0)
-    
-    # Append original image, flipped images, and thresholded image to the list
-    augmented_data.extend([gray_img, thresh_img])
-
-# Convert the list to a numpy array
-augmented_data = np.array(augmented_data)
-
-# Display some of the augmented images
-fig, axes = plt.subplots(3, 2, figsize=(24, 16))
-for i, ax in enumerate(axes.flatten()):
-    ax.imshow(cv2.cvtColor(augmented_data[i], cv2.COLOR_BGR2RGB))
-    ax.axis('off')
-    if i % 2 == 0 :
-        ax.set_title(f'Original Image {((i+1)//2)+1}')
-    else :
-        ax.set_title(f'Thresholded Image {((i+1)//2)}')
-plt.show()
-
-num_images = len(augmented_data)
-print("Number of images in augmented dataset:", num_images)
