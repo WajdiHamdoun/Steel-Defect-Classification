@@ -641,6 +641,8 @@ class Application(tk.Tk):
 
     def admin_interface(self):
      self.clear_widgets()
+     background_color = '#1F1F1F'
+     entry_style = {'font': ('Arial', 12), 'bg': '#333333', 'fg': 'white'}
      main_frame = tk.Frame(self, background='#434547')  # Utilisation de tk.Frame pour autoriser la couleur de fond
      main_frame.pack(padx=10, pady=10, fill='both', expand=True)
      save_path = "C:\\Users\\wajdi\\Desktop\\outputs"
@@ -648,7 +650,7 @@ class Application(tk.Tk):
      tk.Label(self.add_defect_frame, text="Defect Type", bg=background_color, fg='white', font=('Arial', 12)).grid(row=0, column=0, padx=20, pady=10, sticky='e')
      self.new_defect_type_entry = tk.Entry(self.add_defect_frame, **entry_style)
      self.new_defect_type_entry.grid(row=0, column=1, padx=20, pady=10, sticky='ew')
-     messagebox.showinfo("Warning", "Please add the default type name like 'Cr_'")
+
      tk.Label(self.add_defect_frame, text="Description", bg=background_color, fg='white', font=('Arial', 12)).grid(row=1, column=0, padx=20, pady=10, sticky='e')
      self.new_defect_description_entry = tk.Entry(self.add_defect_frame, **entry_style)
      self.new_defect_description_entry.grid(row=1, column=1, padx=20, pady=10, sticky='ew')
@@ -729,18 +731,7 @@ class Application(tk.Tk):
         if self.isAdmin:  # Show detailed analytics for admins only
             self.show_pie_chart(classifications, results_window)
 
-    def show_pie_chart(self, classifications, parent_window):
-        counts = Counter([x.split(': ')[1] for x in classifications])
-        categories = list(counts.keys())
-        sizes = list(counts.values())
-        
-        fig, ax = plt.subplots()
-        ax.pie(sizes, labels=categories, autopct='%1.1f%%', startangle=90, colors=plt.cm.tab20.colors)
-        ax.axis('equal')  # Equal aspect ratio ensures the pie is drawn as a circle.
-        
-        canvas = FigureCanvasTkAgg(fig, master=parent_window)  # A tk.DrawingArea.
-        canvas.draw()
-        canvas.get_tk_widget().pack(side='right', fill='both', expand=True)
+    
 
     def clear_widgets(self):
         for widget in self.winfo_children():
