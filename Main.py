@@ -497,12 +497,7 @@ class Application(tk.Tk):
         # Add the image illustration
         self.image_label = tk.Label(self.auth_frame, image=self.login_photo, bg=background_color)
         self.image_label.grid(row=0, column=0, columnspan=2, pady=(10, 20))
-<<<<<<< Updated upstream
-
-        # Use the entry_style in the Entry widgets
-=======
         messagebox.showinfo("Warning", "Please add  the default type as 'Cr_'")
->>>>>>> Stashed changes
         self.username_entry = tk.Entry(self.auth_frame, **entry_style)
         self.username_entry.grid(row=1, column=0, columnspan=2, padx=20, pady=10, sticky='ew')
 
@@ -526,16 +521,6 @@ class Application(tk.Tk):
 
     def authenticate(self):
         password = self.password_entry.get()
-<<<<<<< Updated upstream
-        self.isAdmin = False
-        if password == "user":
-            self.user_interface()
-        elif password == "admin":
-            self.isAdmin = True
-            self.admin_interface()
-        else:
-            messagebox.showerror("Error", "Incorrect Password")
-=======
         try:
             connection = mysql.connector.connect(
                 host='localhost',
@@ -629,7 +614,6 @@ class Application(tk.Tk):
                 connection.close()
         except Error as e:
             messagebox.showerror("Error", f"Error connecting to MySQL: {e}")
->>>>>>> Stashed changes
 
     def user_interface(self):
         self.clear_widgets()
@@ -662,30 +646,13 @@ class Application(tk.Tk):
      main_frame.pack(padx=10, pady=10, fill='both', expand=True)
      save_path = "C:\\Users\\wajdi\\Desktop\\outputs"
 
-<<<<<<< Updated upstream
-    # Add background picture
-     try:
-        # Charger l'image depuis un fichier local
-        image_path = "wall.jpg"  # Spécifiez le chemin du fichier correct
-        pil_image = Image.open(image_path)
-        width, height = self.winfo_screenwidth(), self.winfo_screenheight()
-        pil_image = pil_image.resize((width, height))
-        tk_image = ImageTk.PhotoImage(pil_image)
-        background_label = tk.Label(main_frame, image=tk_image)
-        background_label.image = tk_image  # Conserver une référence pour éviter la collecte des déchets
-        background_label.place(relwidth=1, relheight=1)
-     except Exception as e:
-        print("Impossible de charger l'image de fond:", e)
-
-=======
-        tk.Label(self.add_defect_frame, text="Defect Type", bg=background_color, fg='white', font=('Arial', 12)).grid(row=0, column=0, padx=20, pady=10, sticky='e')
-        self.new_defect_type_entry = tk.Entry(self.add_defect_frame, **entry_style)
-        self.new_defect_type_entry.grid(row=0, column=1, padx=20, pady=10, sticky='ew')
-        messagebox.showinfo("Warning", "Please add the default type name like 'Cr_'")
-        tk.Label(self.add_defect_frame, text="Description", bg=background_color, fg='white', font=('Arial', 12)).grid(row=1, column=0, padx=20, pady=10, sticky='e')
-        self.new_defect_description_entry = tk.Entry(self.add_defect_frame, **entry_style)
-        self.new_defect_description_entry.grid(row=1, column=1, padx=20, pady=10, sticky='ew')
->>>>>>> Stashed changes
+     tk.Label(self.add_defect_frame, text="Defect Type", bg=background_color, fg='white', font=('Arial', 12)).grid(row=0, column=0, padx=20, pady=10, sticky='e')
+     self.new_defect_type_entry = tk.Entry(self.add_defect_frame, **entry_style)
+     self.new_defect_type_entry.grid(row=0, column=1, padx=20, pady=10, sticky='ew')
+     messagebox.showinfo("Warning", "Please add the default type name like 'Cr_'")
+     tk.Label(self.add_defect_frame, text="Description", bg=background_color, fg='white', font=('Arial', 12)).grid(row=1, column=0, padx=20, pady=10, sticky='e')
+     self.new_defect_description_entry = tk.Entry(self.add_defect_frame, **entry_style)
+     self.new_defect_description_entry.grid(row=1, column=1, padx=20, pady=10, sticky='ew')
 
         # Button to submit defect classification and paragraph
      submit_button = ttk.Button(main_frame, text="Select input images", command=self.submit_defect_classification)
