@@ -608,7 +608,7 @@ class Application(tk.Tk):
                 host='localhost',
                 database='pcd',
                 user='root',
-                password='hBM876,?YXb]z)%4T',
+                password='root',
                 auth_plugin='mysql_native_password'
             )
             if connection.is_connected():
@@ -658,6 +658,7 @@ class Application(tk.Tk):
      main_frame.pack(padx=10, pady=10, fill='both', expand=True)
      save_path = "C:\\Users\\wajdi\\Desktop\\outputs"
 
+<<<<<<< Updated upstream
     # Add background picture
      try:
         # Charger l'image depuis un fichier local
@@ -672,6 +673,15 @@ class Application(tk.Tk):
      except Exception as e:
         print("Impossible de charger l'image de fond:", e)
 
+=======
+        tk.Label(self.add_defect_frame, text="Defect Type", bg=background_color, fg='white', font=('Arial', 12)).grid(row=0, column=0, padx=20, pady=10, sticky='e')
+        self.new_defect_type_entry = tk.Entry(self.add_defect_frame, **entry_style)
+        self.new_defect_type_entry.grid(row=0, column=1, padx=20, pady=10, sticky='ew')
+        messagebox.showinfo("Warning", "Please add the default type name like 'Cr_'")
+        tk.Label(self.add_defect_frame, text="Description", bg=background_color, fg='white', font=('Arial', 12)).grid(row=1, column=0, padx=20, pady=10, sticky='e')
+        self.new_defect_description_entry = tk.Entry(self.add_defect_frame, **entry_style)
+        self.new_defect_description_entry.grid(row=1, column=1, padx=20, pady=10, sticky='ew')
+>>>>>>> Stashed changes
 
         # Button to submit defect classification and paragraph
      submit_button = ttk.Button(main_frame, text="Select input images", command=self.submit_defect_classification)
