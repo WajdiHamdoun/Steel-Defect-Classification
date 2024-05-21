@@ -386,7 +386,7 @@ for img_name, predicted_label in zip(os.listdir(test_folder), predicted_labels):
 
 
 
-#import tkinter as tk
+# interface
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from PIL import Image, ImageTk
@@ -404,43 +404,42 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 
-# Assuming you have defined the model and other necessary imports
-base_model1 = VGG19(weights=None, include_top=False, input_shape=(224, 224, 3))
-for layer in base_model1.layers:
-    layer.trainable = False
-model1 = models.Sequential([
-    base_model1,
-    layers.Flatten(),
-    layers.Dense(256, activation='relu'),
-    layers.Dropout(0.5),
-    layers.Dense(6, activation='softmax')
-])
-_ = model1(np.random.random((1, 224, 224, 3)))
-model1.load_weights('VGG.weights.h5')
+# Define the model
+def create_model(num_classes):
+    base_model = VGG19(weights=None, include_top=False, input_shape=(224, 224, 3))
+    for layer in base_model.layers:
+        layer.trainable = False
+    model = models.Sequential([
+        base_model,
+        layers.Flatten(),
+        layers.Dense(256, activation='relu'),
+        layers.Dropout(0.5),
+        layers.Dense(num_classes, activation='softmax')
+    ])
+    return model
+
+# Initial model creation with 6 classes
+model = create_model(6)
+model(np.random.random((1, 224, 224, 3)))
+model.load_weights('VGG.weights.h5')
+
 class SelectDefectFolderWindow(tk.Toplevel):
     def __init__(self, parent, save_path):
         super().__init__(parent)
         self.title("Select Defect Folder")
         self.geometry("400x300")
-        
         self.save_path = save_path
+        self.folder_var = tk.StringVar()
         
-        # Créer un cadre pour afficher la liste des dossiers
         self.folder_frame = tk.Frame(self)
         self.folder_frame.pack(padx=10, pady=10, fill='both', expand=True)
-        
-        # Ajouter une liste déroulante pour sélectionner un dossier
-        self.folder_var = tk.StringVar()
-        self.folder_var.set("")  # Valeur par défaut
         
         self.folder_list = ttk.Combobox(self.folder_frame, textvariable=self.folder_var, state='readonly')
         self.folder_list.pack(padx=10, pady=5, fill='x')
         
-        # Ajouter un bouton pour ouvrir le dossier sélectionné
         open_button = ttk.Button(self.folder_frame, text="Open Selected Folder", command=self.open_selected_folder)
         open_button.pack(padx=10, pady=5)
         
-        # Récupérer la liste des dossiers dans save_path
         self.folder_list['values'] = [f.name for f in os.scandir(self.save_path) if f.is_dir()]
         
     def open_selected_folder(self):
@@ -453,80 +452,87 @@ class SelectDefectFolderWindow(tk.Toplevel):
                 messagebox.showerror("Error", "Selected folder does not exist.")
         else:
             messagebox.showerror("Error", "Please select a folder.")
-class Application(tk.Tk):
-    # Define constants for paragraphs of each defect
-    PARAGRAPHS = {
-        'Cr': "A crack is a line on the surface of something along which it has split without breaking apart.",
-        'In': "Incomplete penetration occurs when the weld metal does not extend into the root of the weld joint.",
-        'Pa': "Porosity is the presence of small voids or cavities in the weld metal caused by gas entrapment during solidification.",
-        'PS': "Puddle spatter is small particles of molten metal expelled during welding.",
-        'RS': "Root smutting is the presence of sooty deposits or contamination at the root of the weld joint.",
-        'Sc': "Slag is the non-metallic byproduct of the welding process that forms a layer on the surface of the weld bead."
-    }
 
+class Application(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title('Steel Defect Classification')
         self.geometry("800x600")
-        self.configure(background='#434547')  # Set the main window background
-        
-        # Custom styles for ttk widgets
+        self.configure(background='#434547')
+
         self.style = ttk.Style(self)
         self.style.configure('TLabel', font=('Arial', 12), foreground='#FFFFFF', background='#434547')
         self.style.configure('TButton', font=('Arial', 12), background='#5C5F63', foreground='#FFFFFF')
-        self.style.map('TButton', background=[('active', '#848484')])  # Change background color on button click
-        # Load and store the image
-        image_path = "back.png"
-        self.login_image = Image.open(image_path)
+        self.style.map('TButton', background=[('active', '#848484')])
+
+        self.login_image = Image.open("back.png")
         self.login_photo = ImageTk.PhotoImage(self.login_image.resize((250, 250), Image.Resampling.LANCZOS))
 
-        # Initialize the UI
+        self.PARAGRAPHS = self.load_defect_descriptions()
         self.initialize_ui()
 
+    def load_defect_descriptions(self):
+        return {
+            'Cr': "A crack is a line on the surface of something along which it has split without breaking apart.",
+            'In': "Incomplete penetration occurs when the weld metal does not extend into the root of the weld joint.",
+            'Pa': "Porosity is the presence of small voids or cavities in the weld metal caused by gas entrapment during solidification.",
+            'PS': "Puddle spatter is small particles of molten metal expelled during welding.",
+            'RS': "Root smutting is the presence of sooty deposits or contamination at the root of the weld joint.",
+            'Sc': "Slag is the non-metallic byproduct of the welding process that forms a layer on the surface of the weld bead."
+        }
+
     def initialize_ui(self):
-        self.clear_widgets()
-        background_color = '#1F1F1F'
-        self.configure(background=background_color)
-        self.auth_frame = tk.Frame(self, bg=background_color)
-        self.auth_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
-        # Define the style for entry widgets
-        entry_style = {'font': ('Arial', 12), 'bg': '#333333', 'fg': 'white'}
-        # Define the style for the login button
-        login_button_style = {'font': ('Arial', 12), 'bg': '#4F4F4F', 'fg': '#FFFFFF'}
-        # Add the image illustration
-        self.image_label = tk.Label(self.auth_frame, image=self.login_photo, bg=background_color)
-        self.image_label.grid(row=0, column=0, columnspan=2, pady=(10, 20))
-        
-        self.username_entry = tk.Entry(self.auth_frame, **entry_style)
-        self.username_entry.grid(row=1, column=0, columnspan=2, padx=20, pady=10, sticky='ew')
+     self.clear_widgets()
+     background_color = '#1F1F1F'
+     self.configure(background=background_color)
+     self.auth_frame = tk.Frame(self, bg=background_color)
+     self.auth_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
-        self.password_entry = tk.Entry(self.auth_frame, show="*", **entry_style)
-        self.password_entry.grid(row=2, column=0, columnspan=2, padx=20, pady=10, sticky='ew')
+     entry_style = {'font': ('Arial', 12), 'bg': '#333333', 'fg': 'white'}
+     login_button_style = {'font': ('Arial', 12), 'bg': '#4F4F4F', 'fg': '#FFFFFF'}
 
-        # Login button
-        self.login_button = tk.Button(self.auth_frame, text="Login", command=self.authenticate, **login_button_style)
-        self.login_button.grid(row=3, column=0, columnspan=2, padx=20, pady=(10, 20), sticky='ew')
+    # Store self.login_photo as an attribute of the Application class
+     self.login_photo = ImageTk.PhotoImage(self.login_image.resize((250, 250), Image.Resampling.LANCZOS))
+     self.image_label = tk.Label(self.auth_frame, image=self.login_photo, bg=background_color)
+     self.image_label.grid(row=0, column=0, columnspan=2, pady=(10, 20))
 
-        # Forgot Password and Sign Up texts
-        self.forgot_password_label = tk.Label(self.auth_frame, text="Forgot Password?", fg="white", bg=background_color)
-        self.forgot_password_label.grid(row=4, column=0, padx=20, sticky='w')
-        self.password_entry.bind('<Return>', lambda event: self.authenticate())
-        self.sign_up_label = tk.Label(self.auth_frame, text="Sign Up", fg="white", bg=background_color)
-        self.sign_up_label.grid(row=4, column=1, padx=20, sticky='e')
+     self.username_entry = tk.Entry(self.auth_frame, **entry_style)
+     self.username_entry.grid(row=1, column=0, columnspan=2, padx=20, pady=10, sticky='ew')
 
-        self.auth_frame.grid_columnconfigure(0, weight=1)
-        self.auth_frame.grid_columnconfigure(1, weight=1)
+     self.password_entry = tk.Entry(self.auth_frame, show="*", **entry_style)
+     self.password_entry.grid(row=2, column=0, columnspan=2, padx=20, pady=10, sticky='ew')
+     self.password_entry.bind('<Return>', lambda event: self.validate_and_authenticate())
 
+     self.login_button = tk.Button(self.auth_frame, text="Login", command=self.validate_and_authenticate, **login_button_style)
+     self.login_button.grid(row=3, column=0, columnspan=2, padx=20, pady=(10, 20), sticky='ew')
+
+     self.forgot_password_label = tk.Label(self.auth_frame, text="Forgot Password?", fg="white", bg=background_color)
+     self.forgot_password_label.grid(row=4, column=0, padx=20, sticky='w')
+
+     self.sign_up_label = tk.Label(self.auth_frame, text="Sign Up", fg="white", bg=background_color, cursor="hand2")
+     self.sign_up_label.grid(row=4, column=1, padx=20, sticky='e')
+     self.sign_up_label.bind("<Button-1>", lambda e: self.signup_ui())
+
+     self.auth_frame.grid_columnconfigure(0, weight=1)
+     self.auth_frame.grid_columnconfigure(1, weight=1)
+
+
+    def validate_and_authenticate(self):
+        username = self.username_entry.get().strip()
+        if not username:
+            messagebox.showerror("Error", "Please enter a username.")
+            return
+        self.authenticate()
 
     def authenticate(self):
-        password = self.password_entry.get()
         username = self.username_entry.get()
+        password = self.password_entry.get()
         try:
             connection = mysql.connector.connect(
                 host='localhost',
                 database='pcd',
                 user='root',
-                password='root',
+                password='hBM876,?YXb]z)%4T',
                 auth_plugin='mysql_native_password'
             )
             if connection.is_connected():
@@ -616,123 +622,251 @@ class Application(tk.Tk):
             messagebox.showerror("Error", f"Error connecting to MySQL: {e}")
 
     def user_interface(self):
+        self.create_interface("user")
+
+    def admin_interface(self):
+        self.create_interface("admin")
+        add_defect_button = ttk.Button(self, text="Add Defect Type", command=self.add_defect_type_ui)
+        add_defect_button.pack()
+        remove_defect_button = ttk.Button(self, text="Remove Defect Type", command=self.remove_defect_type_ui)
+        remove_defect_button.pack()
+        retrain_button = ttk.Button(self, text="Retrain Model", command=self.retrain_model_ui)
+        retrain_button.pack()
+
+    def create_interface(self, user_type):
         self.clear_widgets()
+        main_frame = tk.Frame(self, background='#434547')
+        main_frame.pack(padx=10, pady=10, fill='both', expand=True)
         try:
-            # Load the image from a local file
-            image_path = "wall.jpg"  # Specify the correct file path
-            pil_image = Image.open(image_path)
+            pil_image = Image.open("wall.jpg")
             width, height = self.winfo_screenwidth(), self.winfo_screenheight()
             pil_image = pil_image.resize((width, height))
             tk_image = ImageTk.PhotoImage(pil_image)
             background_label = tk.Label(main_frame, image=tk_image)
-            background_label.image = tk_image  # Keep a reference to prevent garbage collection
+            background_label.image = tk_image
             background_label.place(relwidth=1, relheight=1)
         except Exception as e:
-            print("Failed to load background image:", e)
+            print("Unable to load background image:", e)
 
-        main_frame = tk.Frame(self, background='#434547')  # Using tk.Frame to allow background color
-        main_frame.pack(padx=10, pady=10, fill='both', expand=True)
-        
-        self.upload_button = ttk.Button(main_frame, text="Upload and Classify Folder", command=self.upload_folder)
-        self.upload_button.pack()
-
+        submit_button = ttk.Button(main_frame, text="Select input images", command=self.submit_defect_classification)
+        submit_button.pack()
         self.back_button = ttk.Button(main_frame, text="Go Back", command=self.initialize_ui)
         self.back_button.pack(pady=10)
 
+    def add_defect_type_ui(self):
+        self.clear_widgets()
+        background_color = '#1F1F1F'
+        self.configure(background=background_color)
+        self.add_defect_frame = tk.Frame(self, bg=background_color)
+        self.add_defect_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
-    def admin_interface(self):
-     self.clear_widgets()
-     background_color = '#1F1F1F'
-     entry_style = {'font': ('Arial', 12), 'bg': '#333333', 'fg': 'white'}
-     main_frame = tk.Frame(self, background='#434547')  # Utilisation de tk.Frame pour autoriser la couleur de fond
-     main_frame.pack(padx=10, pady=10, fill='both', expand=True)
-     save_path = "C:\\Users\\wajdi\\Desktop\\outputs"
+        entry_style = {'font': ('Arial', 12), 'bg': '#333333', 'fg': 'white'}
+        button_style = {'font': ('Arial', 12), 'bg': '#4F4F4F', 'fg': '#FFFFFF'}
 
-     tk.Label(self.add_defect_frame, text="Defect Type", bg=background_color, fg='white', font=('Arial', 12)).grid(row=0, column=0, padx=20, pady=10, sticky='e')
-     self.new_defect_type_entry = tk.Entry(self.add_defect_frame, **entry_style)
-     self.new_defect_type_entry.grid(row=0, column=1, padx=20, pady=10, sticky='ew')
+        tk.Label(self.add_defect_frame, text="Defect Type", bg=background_color, fg='white', font=('Arial', 12)).grid(row=0, column=0, padx=20, pady=10, sticky='e')
+        self.new_defect_type_entry = tk.Entry(self.add_defect_frame, **entry_style)
+        self.new_defect_type_entry.grid(row=0, column=1, padx=20, pady=10, sticky='ew')
 
-     tk.Label(self.add_defect_frame, text="Description", bg=background_color, fg='white', font=('Arial', 12)).grid(row=1, column=0, padx=20, pady=10, sticky='e')
-     self.new_defect_description_entry = tk.Entry(self.add_defect_frame, **entry_style)
-     self.new_defect_description_entry.grid(row=1, column=1, padx=20, pady=10, sticky='ew')
+        tk.Label(self.add_defect_frame, text="Description", bg=background_color, fg='white', font=('Arial', 12)).grid(row=1, column=0, padx=20, pady=10, sticky='e')
+        self.new_defect_description_entry = tk.Entry(self.add_defect_frame, **entry_style)
+        self.new_defect_description_entry.grid(row=1, column=1, padx=20, pady=10, sticky='ew')
 
-        # Button to submit defect classification and paragraph
-     submit_button = ttk.Button(main_frame, text="Select input images", command=self.submit_defect_classification)
-     submit_button.pack()
-        
-        # Button to go back
-     self.back_button = ttk.Button(main_frame, text="Go Back", command=self.initialize_ui)
-     self.back_button.pack(pady=10)
-        
-    def select_input_folder(self):
+        add_defect_button = tk.Button(self.add_defect_frame, text="Add Defect Type", command=self.add_defect_type, **button_style)
+        add_defect_button.grid(row=2, column=0, columnspan=2, padx=20, pady=(10, 20), sticky='ew')
+
+        self.add_defect_frame.grid_columnconfigure(0, weight=1)
+        self.add_defect_frame.grid_columnconfigure(1, weight=1)
+
+        back_button = tk.Button(self.add_defect_frame, text="Back", command=self.admin_interface, **button_style)
+        back_button.grid(row=3, column=0, columnspan=2, padx=20, pady=(10, 20), sticky='ew')
+
+    def add_defect_type(self):
+        new_type = self.new_defect_type_entry.get().strip()
+        new_description = self.new_defect_description_entry.get().strip()
+
+        if not new_type or not new_description:
+            messagebox.showerror("Error", "All fields are required.")
+            return
+
+        if new_type in self.PARAGRAPHS:
+            messagebox.showerror("Error", "Defect type already exists.")
+            return
+
+        self.PARAGRAPHS[new_type] = new_description
+        self.update_defect_descriptions()
+        messagebox.showinfo("Success", "Defect type added.")
+        self.admin_interface()
+
+    def remove_defect_type_ui(self):
+        self.clear_widgets()
+        background_color = '#1F1F1F'
+        self.configure(background=background_color)
+        self.remove_defect_frame = tk.Frame(self, bg=background_color)
+        self.remove_defect_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+
+        entry_style = {'font': ('Arial', 12), 'bg': '#333333', 'fg': 'white'}
+        button_style = {'font': ('Arial', 12), 'bg': '#4F4F4F', 'fg': '#FFFFFF'}
+
+        tk.Label(self.remove_defect_frame, text="Defect Type", bg=background_color, fg='white', font=('Arial', 12)).grid(row=0, column=0, padx=20, pady=10, sticky='e')
+        self.remove_defect_type_entry = ttk.Combobox(self.remove_defect_frame, values=list(self.PARAGRAPHS.keys()), state='readonly', font=('Arial', 12))
+        self.remove_defect_type_entry.grid(row=0, column=1, padx=20, pady=10, sticky='ew')
+
+        remove_defect_button = tk.Button(self.remove_defect_frame, text="Remove Defect Type", command=self.remove_defect_type, **button_style)
+        remove_defect_button.grid(row=1, column=0, columnspan=2, padx=20, pady=(10, 20), sticky='ew')
+
+        self.remove_defect_frame.grid_columnconfigure(0, weight=1)
+        self.remove_defect_frame.grid_columnconfigure(1, weight=1)
+
+        back_button = tk.Button(self.remove_defect_frame, text="Back", command=self.admin_interface, **button_style)
+        back_button.grid(row=2, column=0, columnspan=2, padx=20, pady=(10, 20), sticky='ew')
+
+    def remove_defect_type(self):
+        type_to_remove = self.remove_defect_type_entry.get().strip()
+
+        if not type_to_remove:
+            messagebox.showerror("Error", "Please select a defect type to remove.")
+            return
+
+        if type_to_remove not in self.PARAGRAPHS:
+            messagebox.showerror("Error", "Defect type not found.")
+            return
+
+        del self.PARAGRAPHS[type_to_remove]
+        self.update_defect_descriptions()
+        messagebox.showinfo("Success", "Defect type removed.")
+        self.admin_interface()
+
+    def retrain_model_ui(self):
+        self.clear_widgets()
+        background_color = '#1F1F1F'
+        self.configure(background=background_color)
+        self.retrain_frame = tk.Frame(self, bg=background_color)
+        self.retrain_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+
+        label_style = {'bg': background_color, 'fg': 'white', 'font': ('Arial', 12)}
+        button_style = {'font': ('Arial', 12), 'bg': '#4F4F4F', 'fg': '#FFFFFF'}
+
+        tk.Label(self.retrain_frame, text="Retrain Model", **label_style).grid(row=0, column=0, padx=20, pady=10, sticky='ew')
+        retrain_button = tk.Button(self.retrain_frame, text="Start Retraining", command=self.retrain_model, **button_style)
+        retrain_button.grid(row=1, column=0, padx=20, pady=(10, 20), sticky='ew')
+
+        back_button = tk.Button(self.retrain_frame, text="Back", command=self.admin_interface, **button_style)
+        back_button.grid(row=2, column=0, padx=20, pady=(10, 20), sticky='ew')
+
+    def retrain_model(self):
+        # Path to the dataset directory
+        Datadir = "C:/Users/pc/Desktop/NEU surface defect database"
+        target_size = (224, 224)
+        category_to_label = {k: i for i, k in enumerate(self.PARAGRAPHS.keys())}
+        augmented_data = []
+        augmented_labels = []
+
+        # Load and augment data
+        for img_name in os.listdir(Datadir):
+            img_path = os.path.join(Datadir, img_name)
+            img = cv2.imread(img_path)
+            if img is None:
+                print(f"Error reading image: {img_path}")
+                continue
+            img = cv2.resize(img, target_size)
+            category = img_name.split('_')[0]
+            if category in category_to_label:
+                augmented_data.append(img)
+                augmented_labels.append(category_to_label[category])
+                img_horizontal = cv2.flip(img, 1)
+                augmented_data.append(img_horizontal)
+                augmented_labels.append(category_to_label[category])
+                img_vertical = cv2.flip(img, 0)
+                augmented_data.append(img_vertical)
+                augmented_labels.append(category_to_label[category])
+            else:
+                print(f"Category '{category}' not found in category_to_label dictionary.")
+
+        # Convert lists to numpy arrays
+        augmented_data = np.array(augmented_data)
+        augmented_labels = np.array(augmented_labels)
+
+        # Split data into training, validation, and test sets
+        X_train, X_temp, y_train, y_temp = train_test_split(augmented_data, augmented_labels, test_size=0.3, random_state=20)
+        X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=20)
+
+        # Preprocess the data
+        X_train = preprocess_input(X_train)
+        X_val = preprocess_input(X_val)
+        X_test = preprocess_input(X_test)
+
+        num_classes = len(self.PARAGRAPHS)
+        model = create_model(num_classes)
+
+        # Compile the model
+        model.compile(optimizer=optimizers.Adam(learning_rate=0.0001),
+                      loss='sparse_categorical_crossentropy',
+                      metrics=['accuracy'])
+
+        # Train the model with early stopping
+        history = model.fit(X_train, y_train, epochs=15, batch_size=64, validation_data=(X_val, y_val), verbose=1,
+                            callbacks=[callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)])
+
+        # Evaluate the model on the test set
+        test_loss, test_acc = model.evaluate(X_test, y_test)
+        print('Test accuracy:', test_acc)
+
+        # Plot training & validation accuracy values
+        plt.plot(history.history['accuracy'])
+        plt.plot(history.history['val_accuracy'])
+        plt.title('Model accuracy')
+        plt.ylabel('Accuracy')
+        plt.xlabel('Epoch')
+        plt.legend(['Train', 'Validation'], loc='upper left')
+        plt.show()
+
+        # Plot training & validation loss values
+        plt.plot(history.history['loss'])
+        plt.plot(history.history['val_loss'])
+        plt.title('Model loss')
+        plt.ylabel('Loss')
+        plt.xlabel('Epoch')
+        plt.legend(['Train', 'Validation'], loc='upper left')
+        plt.show()
+
+        y_pred = np.argmax(model.predict(X_test), axis=-1)
+
+        # Calculate additional metrics
+        report = classification_report(y_test, y_pred)
+        print('Classification Report:\n', report)
+
+        # Save the retrained model
+        model.save_weights("VGG.weights.h5")
+        messagebox.showinfo("Success", "Model retrained and saved successfully.")
+
+    def submit_defect_classification(self):
+        save_path = "C:/Users/pc/Desktop/PCD/Output"
         folder_path = filedialog.askdirectory()
         if folder_path:
-            messagebox.showinfo("Input Image Folder Selected", f"Selected folder: {folder_path}")
+            for img_name in os.listdir(folder_path):
+                img_path = os.path.join(folder_path, img_name)
+                if img_path.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')):
+                    image = cv2.imread(img_path)
+                    image = cv2.resize(image, (224, 224))
+                    image = preprocess_input(image)
+                    image = np.expand_dims(image, axis=0)
 
-    def submit_defect_classification(self):
-        selected_defect = self.defect_var.get()
-        paragraph_text = self.PARAGRAPHS.get(selected_defect, "Paragraph not found.")  # Get the paragraph from the dictionary
+                    predictions = model.predict(image)
+                    predicted_class = np.argmax(predictions)
+                    categories = {i: k for i, k in enumerate(self.PARAGRAPHS.keys())}
+                    predicted_category = categories.get(predicted_class, 'Unknown')
 
-    # Save the paragraph to a file
-        with open(f"{selected_defect}_paragraph.txt", "w") as file:
-         file.write(paragraph_text)
+                    defect_folder = os.path.join(save_path, f"{predicted_category}_images")
+                    os.makedirs(defect_folder, exist_ok=True)
+                    shutil.copy(img_path, os.path.join(defect_folder, img_name))
 
-        # Classify images from the folder provided by the admin
-    def submit_defect_classification(self):
-     save_path = "C:\\Users\\wajdi\\Desktop\\outputs"
-     folder_path = filedialog.askdirectory()
-     if folder_path:
-        for img_name in os.listdir(folder_path):
-            img_path = os.path.join(folder_path, img_name)
-            if img_path.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')):  # Filter for image files
-                # Charger l'image sans aucun traitement
-                image = cv2.imread(img_path)
-                
-                # Get the predicted class
-                image = cv2.resize(image, (224, 224))
-                image = preprocess_input(image)
-                image = np.expand_dims(image, axis=0)
-                predictions = model1.predict(image)
-                predicted_class = np.argmax(predictions)
-                categories = {0: 'Cr', 1: 'In', 2: 'Pa', 3: 'PS', 4: 'RS', 5: 'Sc'}  # Utilisation directe de l'indice prédit
-                predicted_category = categories.get(predicted_class, 'Unknown')
+                    paragraph_text = self.PARAGRAPHS.get(predicted_category, "Paragraph not found.")
+                    with open(f"{defect_folder}/{predicted_category}_paragraph.txt", "w") as file:
+                        file.write(paragraph_text)
 
-                # Créer un dossier pour chaque type de défaut s'il n'existe pas
-                defect_folder = os.path.join(save_path, f"{predicted_category}_images")
-                os.makedirs(defect_folder, exist_ok=True)
-
-                # Enregistrer l'image dans le dossier de défaut correspondant sans aucun traitement
-                shutil.copy(img_path, os.path.join(defect_folder, img_name))
-
-                # Enregistrer le paragraphe dans un fichier
-                paragraph_text = self.PARAGRAPHS.get(predicted_category, "Paragraph not found.")
-                with open(f"{defect_folder}/{predicted_category}_paragraph.txt", "w") as file:
-                    file.write(paragraph_text)
-        # Afficher un message de confirmation
-        messagebox.showinfo("Success", "Images classified and folders created successfully!")
-        # Récupérer la liste des dossiers de classification
-        classification_folders = [f.path for f in os.scandir(save_path) if f.is_dir()]
-        
-        # Afficher les dossiers de classification dans une nouvelle fenêtre
-        select_folder_window = SelectDefectFolderWindow(self, save_path)
-        select_folder_window.mainloop()
-
-           
-    def display_results(self, classifications):
-        results_window = tk.Toplevel(self)
-        results_window.title("Classification Results")
-        results_window.geometry("600x400")
-        
-        text_area = tk.Text(results_window)
-        text_area.pack(side='left', fill='both', expand=True)
-        
-        for classification in classifications:
-            text_area.insert(tk.END, classification + "\n")
-        
-        if self.isAdmin:  # Show detailed analytics for admins only
-            self.show_pie_chart(classifications, results_window)
-
-    
+            messagebox.showinfo("Success", "Images classified and folders created successfully!")
+            select_folder_window = SelectDefectFolderWindow(self, save_path)
+            select_folder_window.mainloop()
 
     def clear_widgets(self):
         for widget in self.winfo_children():
@@ -741,3 +875,5 @@ class Application(tk.Tk):
 if __name__ == "__main__":
     app = Application()
     app.mainloop()
+
+
