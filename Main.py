@@ -387,24 +387,22 @@ for img_name, predicted_label in zip(os.listdir(test_folder), predicted_labels):
 
 
 #import tkinter as tk
+import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
+from PIL import Image, ImageTk
 import numpy as np
 import cv2
 import os
 from tensorflow.keras.applications import VGG19
-from tensorflow.keras import layers, models
+from tensorflow.keras import layers, models, optimizers, callbacks
 from tensorflow.keras.applications.vgg19 import preprocess_input
-import tkinter as tk
-import numpy as np
-import cv2
-import os
-import bcrypt
 import shutil
-from PIL import Image, ImageTk
-from tensorflow.keras import layers, models
-from collections import Counter
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import urllib.request
+import mysql.connector
+from mysql.connector import Error
+import bcrypt
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
 
 # Assuming you have defined the model and other necessary imports
 base_model1 = VGG19(weights=None, include_top=False, input_shape=(224, 224, 3))
