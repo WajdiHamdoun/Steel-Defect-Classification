@@ -225,7 +225,86 @@ model.save_weights("VGG.weights.h5")
 
 
 
+<<<<<<< Updated upstream
 #Testing
+=======
+# main
+
+import os
+import cv2
+import numpy as np
+from matplotlib import pyplot as plt
+
+Datadir = "C:/Users/pc/Desktop/Data"
+target_size = (200, 200) 
+augmented_data = []
+
+# Loop through each image in the dataset directory
+for img_name in os.listdir(Datadir):
+    img_path = os.path.join(Datadir, img_name)
+    
+    # Read the image with error handling (Thumbs.db inexistant pour le mm)
+    img = cv2.imread(img_path)
+    if img is None:
+        print(f"Error reading image: {img_path}")
+        continue
+    
+    # Resize the image to the target size (to be adaptive for any input)
+    img = cv2.resize(img, target_size)
+    
+    # Increase contrast of the image
+    alpha = 1.0  # Contrast control (1.0-3.0)
+    beta = 0  # Brightness control (0-100)
+    enhanced_img = cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
+        
+    # Convert the image to grayscale (to be adaptive for any input)
+    gray_img = cv2.cvtColor(enhanced_img, cv2.COLOR_BGR2GRAY)
+        
+    # Apply adaptive thresholding
+    thresh_img = cv2.adaptiveThreshold(gray_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 101, 5)
+        
+    # Flip the image horizontally
+    # flipped_img_horizontal = cv2.flip(enhanced_img, 1)
+    
+    # Flip the image vertically
+    # flipped_img_vertical = cv2.flip(enhanced_img, 0)
+    
+    # Append original image, flipped images, and thresholded image to the list
+    augmented_data.extend([gray_img, thresh_img])
+
+# Convert the list to a numpy array
+augmented_data = np.array(augmented_data)
+
+# Display some of the augmented images
+fig, axes = plt.subplots(3, 2, figsize=(24, 16))
+for i, ax in enumerate(axes.flatten()):
+    ax.imshow(cv2.cvtColor(augmented_data[i], cv2.COLOR_BGR2RGB))
+    ax.axis('off')
+    if i % 2 == 0 :
+        ax.set_title(f'Original Image {((i+1)//2)+1}')
+    else :
+        ax.set_title(f'Thresholded Image {((i+1)//2)}')
+plt.show()
+
+num_images = len(augmented_data)
+print("Number of images in augmented dataset:", num_images)
+
+
+
+
+
+
+
+
+
+
+
+
+# interface
+import tkinter as tk
+from tkinter import filedialog, messagebox, ttk
+from PIL import Image, ImageTk
+>>>>>>> Stashed changes
 import numpy as np
 import cv2
 import os
@@ -443,6 +522,7 @@ class Application(tk.Tk):
 
     def authenticate(self):
         password = self.password_entry.get()
+<<<<<<< Updated upstream
         self.isAdmin = False
         if password == "user":
             self.user_interface()
@@ -451,6 +531,101 @@ class Application(tk.Tk):
             self.admin_interface()
         else:
             messagebox.showerror("Error", "Incorrect Password")
+=======
+        try:
+            connection = mysql.connector.connect(
+                host='localhost',
+                database='pcd',
+                user='root',
+                password='root',
+                auth_plugin='mysql_native_password'
+            )
+            if connection.is_connected():
+                cursor = connection.cursor()
+                cursor.execute("SELECT password, role FROM users WHERE username=%s", (username,))
+                result = cursor.fetchone()
+                if result:
+                    stored_password, role = result
+                    if bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8')):
+                        if role == "Admin":
+                            self.admin_interface()
+                        else:
+                            self.user_interface()
+                    else:
+                        messagebox.showerror("Error", "Invalid Username or Password")
+                else:
+                    messagebox.showerror("Error", "Invalid Username or Password")
+                cursor.close()
+                connection.close()
+        except Error as e:
+            messagebox.showerror("Error", f"Error connecting to MySQL: {e}")
+
+    def signup_ui(self):
+        self.clear_widgets()
+        background_color = '#1F1F1F'
+        self.configure(background=background_color)
+        self.signup_frame = tk.Frame(self, bg=background_color)
+        self.signup_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+
+        entry_style = {'font': ('Arial', 12), 'bg': '#333333', 'fg': 'white'}
+        button_style = {'font': ('Arial', 12), 'bg': '#4F4F4F', 'fg': '#FFFFFF'}
+
+        tk.Label(self.signup_frame, text="Username", bg=background_color, fg='white', font=('Arial', 12)).grid(row=0, column=0, padx=20, pady=10, sticky='e')
+        self.new_username_entry = tk.Entry(self.signup_frame, **entry_style)
+        self.new_username_entry.grid(row=0, column=1, padx=20, pady=10, sticky='ew')
+
+        tk.Label(self.signup_frame, text="Password", bg=background_color, fg='white', font=('Arial', 12)).grid(row=1, column=0, padx=20, pady=10, sticky='e')
+        self.new_password_entry = tk.Entry(self.signup_frame, show="*", **entry_style)
+        self.new_password_entry.grid(row=1, column=1, padx=20, pady=10, sticky='ew')
+
+        tk.Label(self.signup_frame, text="Role", bg=background_color, fg='white', font=('Arial', 12)).grid(row=2, column=0, padx=20, pady=10, sticky='e')
+        self.role_combobox = ttk.Combobox(self.signup_frame, values=["Admin", "User"], state='readonly', font=('Arial', 12))
+        self.role_combobox.grid(row=2, column=1, padx=20, pady=10, sticky='ew')
+        self.role_combobox.current(1)
+
+        signup_button = tk.Button(self.signup_frame, text="Sign Up", command=self.signup, **button_style)
+        signup_button.grid(row=3, column=0, columnspan=2, padx=20, pady=(10, 20), sticky='ew')
+
+        self.signup_frame.grid_columnconfigure(0, weight=1)
+        self.signup_frame.grid_columnconfigure(1, weight=1)
+
+        back_button = tk.Button(self.signup_frame, text="Back to Login", command=self.initialize_ui, **button_style)
+        back_button.grid(row=4, column=0, columnspan=2, padx=20, pady=(10, 20), sticky='ew')
+
+    def signup(self):
+        new_username = self.new_username_entry.get().strip()
+        new_password = self.new_password_entry.get().strip()
+        role = self.role_combobox.get()
+
+        if not new_username or not new_password or not role:
+            messagebox.showerror("Error", "All fields are required.")
+            return
+
+        hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+        try:
+            connection = mysql.connector.connect(
+                host='localhost',
+                database='pcd',
+                user='root',
+                password='hBM876,?YXb]z)%4T',
+                auth_plugin='mysql_native_password'
+            )
+            if connection.is_connected():
+                cursor = connection.cursor()
+                cursor.execute("SELECT username FROM users WHERE username=%s", (new_username,))
+                if cursor.fetchone():
+                    messagebox.showerror("Error", "Username already exists.")
+                else:
+                    cursor.execute("INSERT INTO users (username, password, role) VALUES (%s, %s, %s)", (new_username, hashed_password, role))
+                    connection.commit()
+                    messagebox.showinfo("Success", "User registered successfully.")
+                    self.initialize_ui()
+                cursor.close()
+                connection.close()
+        except Error as e:
+            messagebox.showerror("Error", f"Error connecting to MySQL: {e}")
+>>>>>>> Stashed changes
 
     def user_interface(self):
         self.clear_widgets()
