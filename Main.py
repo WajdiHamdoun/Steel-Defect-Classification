@@ -398,6 +398,7 @@ import tkinter as tk
 import numpy as np
 import cv2
 import os
+import bcrypt
 import shutil
 from PIL import Image, ImageTk
 from tensorflow.keras import layers, models
