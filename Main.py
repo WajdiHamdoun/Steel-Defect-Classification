@@ -436,9 +436,9 @@ class Application(tk.Tk):
 
     def admin_interface(self):
         self.create_interface("admin")
-        add_defect_button = ttk.Button(self, text="Add Defect Type", command=self.add_defect_type)
+        add_defect_button = ttk.Button(self, text="Add Defect Type", command=self.add_defect_type_ui)
         add_defect_button.pack()
-        remove_defect_button = ttk.Button(self, text="Remove Defect Type", command=self.remove_defect_type)
+        remove_defect_button = ttk.Button(self, text="Remove Defect Type", command=self.remove_defect_type_ui)
         remove_defect_button.pack()
 
     def create_interface(self, user_type):
@@ -461,20 +461,88 @@ class Application(tk.Tk):
         self.back_button = ttk.Button(main_frame, text="Go Back", command=self.initialize_ui)
         self.back_button.pack(pady=10)
 
+    def add_defect_type_ui(self):
+        self.clear_widgets()
+        background_color = '#1F1F1F'
+        self.configure(background=background_color)
+        self.add_defect_frame = tk.Frame(self, bg=background_color)
+        self.add_defect_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+
+        entry_style = {'font': ('Arial', 12), 'bg': '#333333', 'fg': 'white'}
+        button_style = {'font': ('Arial', 12), 'bg': '#4F4F4F', 'fg': '#FFFFFF'}
+
+        tk.Label(self.add_defect_frame, text="Defect Type", bg=background_color, fg='white', font=('Arial', 12)).grid(row=0, column=0, padx=20, pady=10, sticky='e')
+        self.new_defect_type_entry = tk.Entry(self.add_defect_frame, **entry_style)
+        self.new_defect_type_entry.grid(row=0, column=1, padx=20, pady=10, sticky='ew')
+
+        tk.Label(self.add_defect_frame, text="Description", bg=background_color, fg='white', font=('Arial', 12)).grid(row=1, column=0, padx=20, pady=10, sticky='e')
+        self.new_defect_description_entry = tk.Entry(self.add_defect_frame, **entry_style)
+        self.new_defect_description_entry.grid(row=1, column=1, padx=20, pady=10, sticky='ew')
+
+        add_defect_button = tk.Button(self.add_defect_frame, text="Add Defect Type", command=self.add_defect_type, **button_style)
+        add_defect_button.grid(row=2, column=0, columnspan=2, padx=20, pady=(10, 20), sticky='ew')
+
+        self.add_defect_frame.grid_columnconfigure(0, weight=1)
+        self.add_defect_frame.grid_columnconfigure(1, weight=1)
+
+        back_button = tk.Button(self.add_defect_frame, text="Back", command=self.admin_interface, **button_style)
+        back_button.grid(row=3, column=0, columnspan=2, padx=20, pady=(10, 20), sticky='ew')
+
     def add_defect_type(self):
-        new_type = "New Type"
-        new_description = "New Description"
-        if new_type not in self.PARAGRAPHS:
-            self.PARAGRAPHS[new_type] = new_description
-            self.update_defect_descriptions()
-            messagebox.showinfo("Success", "Defect type added.")
+        new_type = self.new_defect_type_entry.get().strip()
+        new_description = self.new_defect_description_entry.get().strip()
+
+        if not new_type or not new_description:
+            messagebox.showerror("Error", "All fields are required.")
+            return
+
+        if new_type in self.PARAGRAPHS:
+            messagebox.showerror("Error", "Defect type already exists.")
+            return
+
+        self.PARAGRAPHS[new_type] = new_description
+        self.update_defect_descriptions()
+        messagebox.showinfo("Success", "Defect type added.")
+        self.admin_interface()
+
+    def remove_defect_type_ui(self):
+        self.clear_widgets()
+        background_color = '#1F1F1F'
+        self.configure(background=background_color)
+        self.remove_defect_frame = tk.Frame(self, bg=background_color)
+        self.remove_defect_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+
+        entry_style = {'font': ('Arial', 12), 'bg': '#333333', 'fg': 'white'}
+        button_style = {'font': ('Arial', 12), 'bg': '#4F4F4F', 'fg': '#FFFFFF'}
+
+        tk.Label(self.remove_defect_frame, text="Defect Type", bg=background_color, fg='white', font=('Arial', 12)).grid(row=0, column=0, padx=20, pady=10, sticky='e')
+        self.remove_defect_type_entry = ttk.Combobox(self.remove_defect_frame, values=list(self.PARAGRAPHS.keys()), state='readonly', font=('Arial', 12))
+        self.remove_defect_type_entry.grid(row=0, column=1, padx=20, pady=10, sticky='ew')
+
+        remove_defect_button = tk.Button(self.remove_defect_frame, text="Remove Defect Type", command=self.remove_defect_type, **button_style)
+        remove_defect_button.grid(row=1, column=0, columnspan=2, padx=20, pady=(10, 20), sticky='ew')
+
+        self.remove_defect_frame.grid_columnconfigure(0, weight=1)
+        self.remove_defect_frame.grid_columnconfigure(1, weight=1)
+
+        back_button = tk.Button(self.remove_defect_frame, text="Back", command=self.admin_interface, **button_style)
+        back_button.grid(row=2, column=0, columnspan=2, padx=20, pady=(10, 20), sticky='ew')
 
     def remove_defect_type(self):
-        type_to_remove = "Type to Remove"
-        if type_to_remove in self.PARAGRAPHS:
-            del self.PARAGRAPHS[type_to_remove]
-            self.update_defect_descriptions()
-            messagebox.showinfo("Success", "Defect type removed.")
+        type_to_remove = self.remove_defect_type_entry.get().strip()
+
+        if not type_to_remove:
+            messagebox.showerror("Error", "Please select a defect type to remove.")
+            return
+
+        if type_to_remove not in self.PARAGRAPHS:
+            messagebox.showerror("Error", "Defect type not found.")
+            return
+
+        del self.PARAGRAPHS[type_to_remove]
+        self.update_defect_descriptions()
+        messagebox.showinfo("Success", "Defect type removed.")
+        self.admin_interface()
 
     def submit_defect_classification(self):
         save_path = "C:/Users/pc/Desktop/PCD/Output"
