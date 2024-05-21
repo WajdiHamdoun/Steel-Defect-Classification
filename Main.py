@@ -496,7 +496,7 @@ class Application(tk.Tk):
         # Add the image illustration
         self.image_label = tk.Label(self.auth_frame, image=self.login_photo, bg=background_color)
         self.image_label.grid(row=0, column=0, columnspan=2, pady=(10, 20))
-        messagebox.showinfo("Warning", "Please add  the default type as 'Cr_'")
+        
         self.username_entry = tk.Entry(self.auth_frame, **entry_style)
         self.username_entry.grid(row=1, column=0, columnspan=2, padx=20, pady=10, sticky='ew')
 
@@ -520,6 +520,7 @@ class Application(tk.Tk):
 
     def authenticate(self):
         password = self.password_entry.get()
+        username = self.username_entry.get()
         try:
             connection = mysql.connector.connect(
                 host='localhost',
